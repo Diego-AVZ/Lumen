@@ -12,8 +12,14 @@ export type Wish = {
   enjoyedAt: string | null;
   createdAt: string;
   rank: number;
+  hidden: boolean;
   author: string;
   mine: boolean;
+};
+
+export type WheelSlice = {
+  label: string | null;
+  win: boolean;
 };
 
 export type WishDraw = {
@@ -45,6 +51,7 @@ function asWish(raw: unknown, userId: string): Wish | null {
     enjoyedAt: row.enjoyed_at ? String(row.enjoyed_at) : null,
     createdAt: String(row.created_at || ''),
     rank: Number(row.rank) || 0,
+    hidden: row.hidden === true,
     author: String(row.author || ''),
     mine: String(row.author_id || '') === userId,
   };
@@ -56,12 +63,12 @@ async function userId() {
   return data.session?.user.id ?? '';
 }
 
-export async function loadBoard(projectId: string): Promise<{ wishes: Wish[]; draws: WishDraw[] }> {
+export async function loadBoard(projectId: string): Promise<{ wishes: Wish[]; draws: WishDraw[]; ready: boolean }> {
   if (!supabase) throw new Error('Supabase no está configurado.');
   const { data, error } = await supabase.rpc('wish_board', { p_project: projectId });
   if (error) throw new Error(explain(error));
   const uid = await userId();
-  const body = (data && typeof data === 'object' ? data : {}) as { items?: unknown; draws?: unknown };
+  const body = (data && typeof data === 'object' ? data : {}) as { items?: unknown; draws?: unknown; ready?: boolean };
   const wishes = Array.isArray(body.items) ? body.items.map((row) => asWish(row, uid)).filter((row): row is Wish => Boolean(row)) : [];
   const draws = Array.isArray(body.draws)
     ? body.draws
@@ -72,10 +79,10 @@ export async function loadBoard(projectId: string): Promise<{ wishes: Wish[]; dr
         })
         .filter((row): row is WishDraw => Boolean(row))
     : [];
-  return { wishes, draws };
+  return { wishes, draws, ready: body.ready === true };
 }
 
-export async function addWish(projectId: string, input: { title: string; note: string; span: SpanId; moods: MoodId[] }) {
+export async function addWish(projectId: string, input: { title: string; note: string; span: SpanId; moods: MoodId[]; hidden: boolean }) {
   if (!supabase) throw new Error('Supabase no está configurado.');
   const { error } = await supabase.rpc('wish_add', {
     p_project: projectId,
@@ -83,6 +90,21 @@ export async function addWish(projectId: string, input: { title: string; note: s
     p_note: input.note,
     p_span: input.span,
     p_moods: input.moods,
+    p_hidden: input.hidden,
+  });
+  if (error) throw new Error(explain(error));
+}
+
+export async function editWish(projectId: string, wishId: string, input: { title: string; note: string; span: SpanId; moods: MoodId[]; hidden: boolean }) {
+  if (!supabase) throw new Error('Supabase no está configurado.');
+  const { error } = await supabase.rpc('wish_edit', {
+    p_project: projectId,
+    p_id: wishId,
+    p_title: input.title,
+    p_note: input.note,
+    p_span: input.span,
+    p_moods: input.moods,
+    p_hidden: input.hidden,
   });
   if (error) throw new Error(explain(error));
 }
@@ -99,15 +121,31 @@ export async function moveWish(projectId: string, wishId: string, dir: -1 | 1) {
   if (error) throw new Error(explain(error));
 }
 
-export async function spinWish(projectId: string, span: SpanId, moods: MoodId[]): Promise<{ wish: Wish; fresh: boolean }> {
+export async function spinWish(
+  projectId: string,
+  span: SpanId,
+  moods: MoodId[],
+  hidden: boolean,
+): Promise<{ wish: Wish; fresh: boolean; wheel: WheelSlice[] }> {
   if (!supabase) throw new Error('Supabase no está configurado.');
-  const { data, error } = await supabase.rpc('wish_spin', { p_project: projectId, p_span: span, p_moods: moods });
+  const { data, error } = await supabase.rpc('wish_spin', {
+    p_project: projectId,
+    p_span: span,
+    p_moods: moods,
+    p_hidden: hidden,
+  });
   if (error) throw new Error(explain(error));
-  const body = (data && typeof data === 'object' ? data : {}) as { fresh?: boolean; wish?: unknown };
+  const body = (data && typeof data === 'object' ? data : {}) as { fresh?: boolean; wish?: unknown; wheel?: unknown };
   const uid = await userId();
   const wish = asWish(body.wish, uid);
   if (!wish) throw new Error('La ruleta no devolvió un plan.');
-  return { wish, fresh: Boolean(body.fresh) };
+  const wheel = Array.isArray(body.wheel)
+    ? body.wheel.map((slice) => {
+        const rec = slice as Record<string, unknown>;
+        return { label: typeof rec.label === 'string' ? rec.label : null, win: rec.win === true };
+      })
+    : [{ label: wish.title, win: true }];
+  return { wish, fresh: Boolean(body.fresh), wheel: wheel.length ? wheel : [{ label: wish.title, win: true }] };
 }
 
 export async function openWishProject(projectId: string): Promise<ProjectDocument | null> {
