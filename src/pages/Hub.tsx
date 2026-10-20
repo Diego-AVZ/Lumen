@@ -9,6 +9,7 @@ import { HubShell } from '@/hub/HubShell';
 import { HUB_VISTAS, IDEA_SEEDS, type HubVista } from '@/hub/catalog';
 import { addIdea, listIdeas, removeIdea, type IdeaNote } from '@/hub/ideas';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
+import { WaitMark } from '@/hub/WaitMark';
 import { ago, clock, lasted, loadVisitStats, type VisitStat } from '@/lib/stats';
 
 export function Hub() {
@@ -44,7 +45,7 @@ function RedirectCrear() {
 
 function ProjectsPanel() {
   const navigate = useNavigate();
-  const [rows, setRows] = useState<DraftSummary[]>([]);
+  const [rows, setRows] = useState<DraftSummary[] | null>(null);
   const [pending, setPending] = useState<{ id: string; slug: string; title: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -56,7 +57,9 @@ function ProjectsPanel() {
     refresh();
   }, []);
 
-  const empty = rows.length === 0;
+  const loading = rows === null;
+  const list = rows ?? [];
+  const empty = !loading && list.length === 0;
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-10 sm:px-8">
@@ -72,6 +75,8 @@ function ProjectsPanel() {
       <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-inkwell/60">
         Hoy son universos. Mañana pueden ser cartas, álbumes o mapas. Viven en tu cuenta.
       </p>
+
+      {loading && <WaitMark line="Trayendo tus proyectos" />}
 
       {empty && (
         <div className="mt-10 overflow-hidden rounded-[32px] bg-inkwell p-8 text-linen sm:p-10">
@@ -105,8 +110,9 @@ function ProjectsPanel() {
         </div>
       )}
 
+      {!loading && (
       <ul className="mt-10 grid gap-4 sm:grid-cols-2">
-        {rows.map((row) => (
+        {list.map((row) => (
           <li key={row.id} className="group relative overflow-hidden rounded-[28px] bg-white p-6 ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(40,28,16,0.08)]">
             <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(232,184,109,0.28),transparent_68%)]" />
             <Link to={`/crear/${row.id}`} className="block">
@@ -156,6 +162,7 @@ function ProjectsPanel() {
           </li>
         ))}
       </ul>
+      )}
 
       {pending && (
         <ConfirmDelete
@@ -179,15 +186,18 @@ function ProjectsPanel() {
 
 function PlanPanel() {
   const navigate = useNavigate();
-  const [rows, setRows] = useState<DraftSummary[]>([]);
+  const [rows, setRows] = useState<DraftSummary[] | null>(null);
 
   useEffect(() => {
     void listDrafts().then(setRows);
   }, []);
 
-  const published = rows.filter((row) => row.status === 'published').length;
+  const list = rows ?? [];
+  const loading = rows === null;
+
+  const published = list.filter((row) => row.status === 'published').length;
   const meters = [
-    { label: 'Proyectos', value: rows.length, cap: 12, line: 'En tu cuenta' },
+    { label: 'Proyectos', value: list.length, cap: 12, line: 'En tu cuenta' },
     { label: 'Publicados', value: published, cap: 6, line: 'Listos para abrir' },
   ];
 
@@ -198,6 +208,9 @@ function PlanPanel() {
       <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-inkwell/60">
         Los proyectos viven en tu cuenta. Entras con Google o el correo y los tienes en cualquier sitio.
       </p>
+      {loading ? (
+        <WaitMark line="Contando lo que tienes" />
+      ) : (
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {meters.map((meter) => {
           const pct = Math.min(100, Math.round((meter.value / meter.cap) * 100));
@@ -216,6 +229,7 @@ function PlanPanel() {
           );
         })}
       </div>
+      )}
       <AccountBar
         onOpen={(id) => navigate(`/crear/${id}`)}
       />
@@ -224,7 +238,7 @@ function PlanPanel() {
 }
 
 function TrackingPanel() {
-  const [rows, setRows] = useState<DraftSummary[]>([]);
+  const [rows, setRows] = useState<DraftSummary[] | null>(null);
   const [stats, setStats] = useState<Record<string, VisitStat>>({});
   const [tick, setTick] = useState(0);
   const [pending, setPending] = useState<{ id: string; slug: string; title: string } | null>(null);
@@ -240,7 +254,8 @@ function TrackingPanel() {
     return () => window.clearInterval(refresh);
   }, []);
 
-  const ordered = [...rows].sort((a, b) => {
+  const list = rows ?? [];
+  const ordered = [...list].sort((a, b) => {
     const lastA = stats[a.id]?.lastAt ?? '';
     const lastB = stats[b.id]?.lastAt ?? '';
     if (lastA !== lastB) return lastA < lastB ? 1 : -1;
@@ -254,7 +269,9 @@ function TrackingPanel() {
       <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-inkwell/60">
         Visitas, última vez, y si era una cita: si dijo que sí y qué día eligió.
       </p>
-      {ordered.length === 0 ? (
+      {rows === null ? (
+        <WaitMark line="Mirando quién ha abierto" />
+      ) : ordered.length === 0 ? (
         <p className="mt-10 max-w-md text-[16px] text-inkwell/55">Todavía no hay proyectos. Cuando existan, las visitas aparecerán en esta tabla.</p>
       ) : (
         <div className="mt-10 overflow-x-auto rounded-[28px] bg-white ring-1 ring-black/5">

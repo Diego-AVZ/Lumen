@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { gmailInbox, listMine, sendMagicLink, signInWithGoogle, signOut, type CloudUniverse } from '@/lib/cloud';
 import { purgeProject } from '@/lib/drafts';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
+import { WaitMark } from '@/hub/WaitMark';
 import { useSession } from '@/lib/session';
 import { cloudEnabled } from '@/lib/supabase';
 
@@ -17,15 +18,16 @@ export function AccountBar({
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<'google' | 'email' | 'out' | 'del' | null>(null);
-  const [mine, setMine] = useState<CloudUniverse[]>([]);
+  const [mine, setMine] = useState<CloudUniverse[] | null>(null);
   const [pending, setPending] = useState<CloudUniverse | null>(null);
 
   useEffect(() => {
     if (!user) {
-      setMine([]);
+      setMine(null);
       return;
     }
     let cancel = false;
+    setMine(null);
     void listMine().then((rows) => {
       if (!cancel) setMine(rows);
     });
@@ -143,7 +145,9 @@ export function AccountBar({
           {busy === 'out' ? 'Saliendo…' : 'Cerrar sesión'}
         </button>
       </div>
-      {mine.length === 0 ? (
+      {mine === null ? (
+        <WaitMark line="Trayendo tus proyectos" tone="inline" />
+      ) : mine.length === 0 ? (
         <p className="mt-5 text-[15px] text-inkwell/55">Todavía no hay ninguno en la cuenta.</p>
       ) : (
         <ul className="mt-5 grid gap-3 sm:grid-cols-2">
