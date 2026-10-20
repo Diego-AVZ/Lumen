@@ -1,0 +1,145 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { saveDraft } from '@/lib/drafts';
+import { haptic } from '@/lib/haptics';
+import { uid } from '@/lib/motion';
+import { CITA_PHRASES, blankCita, citaTitle } from '@/schema/cita';
+
+export function CitaCreate({ onBack }: { onBack: () => void }) {
+  const navigate = useNavigate();
+  const [step, setStep] = useState(0);
+  const [forName, setForName] = useState('');
+  const [fromName, setFromName] = useState('');
+  const [question, setQuestion] = useState(CITA_PHRASES[0]);
+  const [letter, setLetter] = useState('No hace falta que sea perfecto. Solo quiero verte.');
+  const [dates, setDates] = useState([
+    { id: uid('when'), label: 'Viernes por la noche', when: '' },
+    { id: uid('when'), label: 'Sábado a media tarde', when: '' },
+  ]);
+
+  const finish = () => {
+    const doc = blankCita();
+    doc.forName = forName.trim();
+    doc.fromName = fromName.trim();
+    doc.question = question.trim() || CITA_PHRASES[0];
+    doc.letter = letter.trim();
+    doc.dates = dates.filter((item) => item.label.trim() || item.when);
+    if (doc.dates.length === 0) {
+      doc.dates = [{ id: uid('when'), label: 'Cuando quieras', when: '' }];
+    }
+    doc.meta.title = citaTitle(doc);
+    doc.meta.titleTouched = Boolean(forName.trim());
+    void saveDraft(doc).then(() => {
+      haptic('success');
+      navigate(`/crear/${doc.meta.id}`);
+    });
+  };
+
+  return (
+    <div className="mx-auto max-w-xl">
+      <button type="button" onClick={() => (step === 0 ? onBack() : setStep((n) => n - 1))} className="text-[13px] text-inkwell/45">
+        ← {step === 0 ? 'Plantillas' : 'Anterior'}
+      </button>
+      <div className="mt-6 flex gap-1.5">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className={`h-1 flex-1 rounded-full ${i <= step ? 'bg-brass' : 'bg-black/10'}`} />
+        ))}
+      </div>
+
+      {step === 0 && (
+        <>
+          <p className="mt-8 text-[12px] uppercase tracking-[0.22em] text-brass">01 · Pedir cita</p>
+          <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.8rem)] italic leading-[0.95]">¿Para quién es el sobre?</h1>
+          <label className="mt-8 block">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Su nombre</span>
+            <input autoFocus value={forName} onChange={(e) => setForName(e.target.value)} placeholder="Clara" className="mt-2 w-full border-b border-black/12 bg-transparent py-3 font-display text-3xl italic outline-none placeholder:text-inkwell/20" />
+          </label>
+          <label className="mt-6 block">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">De parte de</span>
+            <input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Alex" className="mt-2 w-full border-b border-black/10 bg-transparent py-3 text-2xl outline-none placeholder:text-inkwell/25" />
+          </label>
+          <button type="button" disabled={!forName.trim()} onClick={() => setStep(1)} className="mt-10 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-30">
+            Seguir
+          </button>
+        </>
+      )}
+
+      {step === 1 && (
+        <>
+          <p className="mt-8 text-[12px] uppercase tracking-[0.22em] text-brass">02 · La pregunta</p>
+          <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.8rem)] italic leading-[0.95]">Elige una frase, o escríbela</h1>
+          <div className="mt-8 flex flex-wrap gap-2">
+            {CITA_PHRASES.map((phrase) => (
+              <button
+                key={phrase}
+                type="button"
+                onClick={() => setQuestion(phrase)}
+                className={`rounded-full px-4 py-2 text-left text-[14px] ${question === phrase ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+              >
+                {phrase}
+              </button>
+            ))}
+          </div>
+          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} className="mt-6 w-full resize-none rounded-[22px] bg-white px-4 py-3 text-[17px] outline-none ring-1 ring-black/10" />
+          <button type="button" disabled={!question.trim()} onClick={() => setStep(2)} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-30">
+            Seguir
+          </button>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <p className="mt-8 text-[12px] uppercase tracking-[0.22em] text-brass">03 · La nota</p>
+          <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.8rem)] italic leading-[0.95]">Algo más, si quieres</h1>
+          <p className="mt-3 text-[16px] text-inkwell/55">Va dentro del sobre, encima de la pregunta.</p>
+          <textarea autoFocus value={letter} onChange={(e) => setLetter(e.target.value)} rows={5} className="mt-8 w-full resize-none rounded-[22px] bg-white px-4 py-3 text-[17px] leading-relaxed outline-none ring-1 ring-black/10" />
+          <div className="mt-8 flex gap-4">
+            <button type="button" onClick={() => setStep(3)} className="rounded-full bg-inkwell px-6 py-3 text-linen">
+              Seguir
+            </button>
+            <button type="button" onClick={() => setStep(3)} className="text-[14px] text-inkwell/45">
+              Saltar este
+            </button>
+          </div>
+        </>
+      )}
+
+      {step === 3 && (
+        <>
+          <p className="mt-8 text-[12px] uppercase tracking-[0.22em] text-brass">04 · Los días</p>
+          <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.8rem)] italic leading-[0.95]">Si dice que sí, ¿cuándo?</h1>
+          <ul className="mt-8 grid gap-3">
+            {dates.map((item, index) => (
+              <li key={item.id} className="rounded-[22px] bg-white p-4 ring-1 ring-black/10">
+                <input
+                  value={item.label}
+                  onChange={(e) => setDates(dates.map((row, i) => (i === index ? { ...row, label: e.target.value } : row)))}
+                  placeholder="Viernes por la noche"
+                  className="w-full bg-transparent font-display text-2xl italic outline-none"
+                />
+                <input
+                  type="datetime-local"
+                  value={item.when}
+                  onChange={(e) => setDates(dates.map((row, i) => (i === index ? { ...row, when: e.target.value } : row)))}
+                  className="mt-2 w-full bg-transparent text-[14px] text-inkwell/70 outline-none"
+                />
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="mt-4 text-[14px] text-brass"
+            onClick={() => setDates([...dates, { id: uid('when'), label: '', when: '' }])}
+          >
+            Otra fecha
+          </button>
+          <div>
+            <button type="button" onClick={finish} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen">
+              Crear el sobre
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
