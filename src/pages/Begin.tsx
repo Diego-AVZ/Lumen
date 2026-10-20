@@ -10,6 +10,7 @@ import { THEMES, blankDocument } from '@/schema/universe';
 import { HubShell } from '@/hub/HubShell';
 import { TEMPLATES, type TemplateId } from '@/hub/catalog';
 import { PlanGate, planLabel } from '@/hub/PlanShop';
+import { GiftPeek } from '@/hub/GiftPeek';
 import { documentFromEasy, EMPTY_EASY, type EasyAnswers } from '@/studio/easyUniverse';
 import { CitaCreate } from '@/pages/CitaCreate';
 
@@ -258,11 +259,11 @@ export function Begin() {
                     onClick={() => pickTemplate(item.id, item.available)}
                     className="group w-full overflow-hidden rounded-[32px] text-left outline-none ring-1 ring-black/10 transition hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(40,28,16,0.12)] focus-visible:ring-2 focus-visible:ring-brass"
                   >
-                    <div className="relative h-40 px-6 py-5 text-linen" style={{ background: item.sky }}>
-                      <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em]">
+                    <div className="relative h-[13.6rem] overflow-hidden px-6 py-5 text-linen" style={{ background: item.sky }}>
+                      <span className="relative z-10 rounded-full bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em]">
                         {item.tag}
                       </span>
-                      <span className="absolute bottom-5 right-6 text-5xl opacity-30 transition group-hover:opacity-60">✦</span>
+                      <GiftPeek id={item.id} />
                     </div>
                     <div className="bg-white px-6 py-5">
                       <h2 className="font-display text-4xl italic">{item.name}</h2>
