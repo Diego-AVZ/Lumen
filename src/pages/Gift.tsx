@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { DateAskPlayer } from '@/cita/DateAskPlayer';
-import { inspectGift, loadOwned, loadPublished, openGift } from '@/lib/cloud';
+import { loadOwned, openGift, readGift } from '@/lib/cloud';
 import { peekDraft } from '@/lib/drafts';
 import { GiftLinks } from '@/pages/GiftLinks';
 import { pingVisit } from '@/lib/stats';
@@ -40,40 +40,22 @@ export function Gift({ kind }: { kind: 'published' | 'draft' }) {
     const load = async () => {
       try {
         if (kind === 'published' && slug) {
-          const state = await inspectGift(slug);
+          const remembered = rememberedPhrase(slug);
+          const read = await readGift(slug, remembered);
           if (stop) return;
-          if (state === 'missing') {
-            setMessage('Este regalo no está publicado.');
+          if (read.state === 'open' && read.doc) {
+            setDoc(read.doc);
+            setLocked(false);
+            setMessage('');
             setLoading(false);
             return;
           }
-          if (state === 'locked') {
-            const remembered = rememberedPhrase(slug);
-            if (remembered) {
-              try {
-                const next = await openGift(slug, remembered);
-                if (stop) return;
-                setDoc(next);
-                setLocked(false);
-                setLoading(false);
-                return;
-              } catch {
-                /* pedirá la contraseña */
-              }
-            }
+          if (read.state === 'locked' || read.state === 'wrong') {
             setLocked(true);
             setLoading(false);
             return;
           }
-          const next = await loadPublished(slug);
-          if (stop) return;
-          if (!next) {
-            setMessage('Este regalo no está publicado.');
-            setLoading(false);
-            return;
-          }
-          setDoc(next);
-          setMessage('');
+          setMessage('Este regalo no está publicado.');
           setLoading(false);
           return;
         }

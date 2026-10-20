@@ -15,7 +15,11 @@ function githubPagesSpa() {
       fs.mkdirSync(path.join(dist, 'crear', 'nuevo'), { recursive: true });
       fs.copyFileSync(index, path.join(dist, 'crear', 'index.html'));
       fs.copyFileSync(index, path.join(dist, 'crear', 'nuevo', 'index.html'));
-      fs.copyFileSync(index, path.join(dist, '404.html'));
+      const base = (process.env.VITE_BASE || '/').replace(/\/?$/, '/');
+      fs.writeFileSync(
+        path.join(dist, '404.html'),
+        `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lumen</title><script>sessionStorage.setItem('lumen.path',location.pathname+location.search+location.hash);location.replace('${base}');</script>`,
+      );
     },
   };
 }

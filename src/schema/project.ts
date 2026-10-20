@@ -8,10 +8,14 @@ export function isCita(doc: ProjectDocument): doc is DateAskDocument {
 }
 
 export function parseProject(input: unknown): ProjectDocument {
-  if (input && typeof input === 'object' && (input as { kind?: string }).kind === 'cita') {
-    return parseCita(input);
+  let value = input;
+  if (typeof value === 'string') {
+    value = JSON.parse(value);
   }
-  return parseDocument(input);
+  if (value && typeof value === 'object' && (value as { kind?: string }).kind === 'cita') {
+    return parseCita(value);
+  }
+  return parseDocument(value);
 }
 
 export function projectTitle(doc: ProjectDocument) {

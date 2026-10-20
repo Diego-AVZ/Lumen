@@ -137,46 +137,69 @@ async function persistUniverse(doc: ProjectDocument) {
   if (result.error) throw cloudError(result.error);
 }
 
-export async function loadPublished(slug: string): Promise<ProjectDocument | null> {
-  if (!supabase || !slug) return null;
+function decodeDocument(raw: unknown): ProjectDocument | null {
+  try {
+    return parseProject(raw);
+  } catch {
+    return null;
+  }
+}
+
+type GiftRead = { state: 'missing' | 'open' | 'locked' | 'wrong'; doc: ProjectDocument | null };
+
+export async function readGift(slug: string, phrase = ''): Promise<GiftRead> {
+  if (!supabase || !slug) return { state: 'missing', doc: null };
+  const rpc = await supabase.rpc('read_gift', { p_slug: slug, p_phrase: phrase });
+  if (!rpc.error && rpc.data && typeof rpc.data === 'object') {
+    const data = rpc.data as { state?: string; document?: unknown };
+    if (data.state === 'open') return { state: 'open', doc: decodeDocument(data.document) };
+    if (data.state === 'locked' || data.state === 'wrong' || data.state === 'missing') {
+      return { state: data.state, doc: null };
+    }
+  }
+  const lock = await supabase.rpc('gift_lock', { p_slug: slug });
+  if (!lock.error && lock.data === 'locked') {
+    if (!phrase) return { state: 'locked', doc: null };
+    const opened = await supabase.rpc('open_gift', { p_slug: slug, p_phrase: phrase });
+    if (!opened.error && opened.data) return { state: 'open', doc: decodeDocument(opened.data) };
+    if (opened.error && String(opened.error.message).includes('wrong_phrase')) return { state: 'wrong', doc: null };
+    return { state: 'locked', doc: null };
+  }
+  if (!lock.error && lock.data === 'missing') return { state: 'missing', doc: null };
   const { data, error } = await supabase
     .from('universes')
     .select('document')
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle();
-  if (error || !data?.document) return null;
-  try {
-    return parseProject(data.document);
-  } catch {
-    return null;
+  if (error || !data?.document) return { state: 'missing', doc: null };
+  const doc = decodeDocument(data.document);
+  if (!doc) return { state: 'missing', doc: null };
+  if (doc.meta.unlockHash && !phrase) return { state: 'locked', doc: null };
+  if (doc.meta.unlockHash && phrase) {
+    const hashed = await hashPhrase(phrase);
+    if (hashed !== doc.meta.unlockHash) return { state: 'wrong', doc: null };
   }
+  return { state: 'open', doc };
+}
+
+export async function loadPublished(slug: string): Promise<ProjectDocument | null> {
+  const read = await readGift(slug);
+  return read.state === 'open' ? read.doc : null;
 }
 
 export async function inspectGift(slug: string): Promise<'missing' | 'open' | 'locked'> {
-  if (!supabase || !slug) return 'missing';
-  const rpc = await supabase.rpc('gift_lock', { p_slug: slug });
-  if (!rpc.error && (rpc.data === 'missing' || rpc.data === 'open' || rpc.data === 'locked')) {
-    return rpc.data;
-  }
-  const opened = await loadPublished(slug);
-  if (!opened) return 'missing';
-  return opened.meta.unlockHash ? 'locked' : 'open';
+  const read = await readGift(slug);
+  if (read.state === 'open' || read.state === 'locked' || read.state === 'missing') return read.state;
+  return 'locked';
 }
 
 export async function openGift(slug: string, phrase: string): Promise<ProjectDocument> {
-  if (!supabase || !slug) throw new Error('No encuentro este regalo.');
-  const rpc = await supabase.rpc('open_gift', { p_slug: slug, p_phrase: phrase });
-  if (!rpc.error && rpc.data) return parseProject(rpc.data);
-  if (rpc.error && String(rpc.error.message).includes('wrong_phrase')) {
-    throw new Error('La contraseña no es esa.');
-  }
-  const opened = await loadPublished(slug);
-  if (!opened) throw new Error('Este regalo no está publicado.');
-  if (!opened.meta.unlockHash) return opened;
-  const hashed = await hashPhrase(phrase);
-  if (hashed !== opened.meta.unlockHash) throw new Error('La contraseña no es esa.');
-  return opened;
+  const read = await readGift(slug, phrase);
+  if (read.state === 'wrong') throw new Error('La contraseña no es esa.');
+  if (read.state === 'locked') throw new Error('Falta la contraseña.');
+  if (read.state !== 'open' || !read.doc) throw new Error('Este regalo no está publicado.');
+  return read.doc;
 }
 
 export type CloudUniverse = {
