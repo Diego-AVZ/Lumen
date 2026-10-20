@@ -7,7 +7,7 @@ import { PriceTag } from '@/hub/PriceTag';
 import { isCita } from '@/schema/project';
 import { loadDraft, peekDraft, purgeProject, saveDraft } from '@/lib/drafts';
 import { EmojiBar, insertEmoji } from '@/cita/EmojiBar';
-import { CITA_PHRASES, CITA_SEALS, citaTitle, parseCita, type DateAskDocument } from '@/schema/cita';
+import { CITA_EYEBROWS, CITA_PHRASES, CITA_SEALS, citaTitle, parseCita, type DateAskDocument } from '@/schema/cita';
 import { PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
 
@@ -100,6 +100,19 @@ export function DateAskStudio({ id }: { id: string }) {
             <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">De parte de</span>
             <input value={doc.fromName} onChange={(e) => edit({ fromName: e.target.value })} className="mt-1 w-full border-b border-black/10 bg-transparent py-2 text-lg outline-none" />
           </label>
+          <p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Lo que pone arriba</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {CITA_EYEBROWS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => edit({ eyebrow: item.id })}
+                className={`rounded-full px-3 py-1.5 text-[13px] ${doc.eyebrow === item.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+              >
+                {item.id === 'from' ? (doc.fromName.trim() ? `De ${doc.fromName.trim()}` : 'De quien invita') : item.label}
+              </button>
+            ))}
+          </div>
           <p className="mt-7 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">La pregunta</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {CITA_PHRASES.map((phrase) => (

@@ -20,6 +20,26 @@ export const CITA_SEALS = [
 
 export type CitaSeal = (typeof CITA_SEALS)[number]['id'];
 
+export const CITA_EYEBROWS = [
+  { id: 'cita', label: 'Una cita' },
+  { id: 'plan', label: 'Un plan' },
+  { id: 'quedada', label: 'Una quedada' },
+  { id: 'cafe', label: 'Un café' },
+  { id: 'salida', label: 'Una salida' },
+  { id: 'from', label: 'De quien invita' },
+] as const;
+
+export type CitaEyebrow = (typeof CITA_EYEBROWS)[number]['id'];
+
+export function isCitaEyebrow(value: string): value is CitaEyebrow {
+  return CITA_EYEBROWS.some((item) => item.id === value);
+}
+
+export function citaEyebrowText(doc: { eyebrow: CitaEyebrow; fromName: string }) {
+  if (doc.eyebrow === 'from' && doc.fromName.trim()) return `De ${doc.fromName.trim()}`;
+  return CITA_EYEBROWS.find((item) => item.id === doc.eyebrow)?.label ?? 'Una cita';
+}
+
 export function isCitaSeal(value: string): value is CitaSeal {
   return CITA_SEALS.some((item) => item.id === value);
 }
@@ -39,6 +59,7 @@ export type DateAskDocument = {
   question: string;
   letter: string;
   seal: CitaSeal;
+  eyebrow: CitaEyebrow;
   envelope: string;
   dates: DateOption[];
 };
@@ -66,6 +87,7 @@ export function blankCita(): DateAskDocument {
     question: CITA_PHRASES[0],
     letter: 'No hace falta que sea perfecto. Solo quiero verte.',
     seal: 'heart',
+    eyebrow: 'cita',
     envelope: '',
     dates: nearbySlots()
       .slice(0, 2)
@@ -111,6 +133,11 @@ export function parseCita(input: unknown): DateAskDocument {
     seal: (() => {
       const seal = str(raw.seal);
       return isCitaSeal(seal) ? seal : 'heart';
+    })(),
+    eyebrow: (() => {
+      const eyebrow = str(raw.eyebrow);
+      if (isCitaEyebrow(eyebrow)) return eyebrow;
+      return str(raw.fromName).trim() ? 'from' : 'cita';
     })(),
     envelope: str(raw.envelope).slice(0, 42),
     dates: dates.map((item) => ({

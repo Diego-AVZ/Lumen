@@ -6,7 +6,7 @@ import { uid } from '@/lib/motion';
 import { DateSlots } from '@/cita/DateSlots';
 import { PriceTag } from '@/hub/PriceTag';
 import { EmojiBar, insertEmoji } from '@/cita/EmojiBar';
-import { CITA_PHRASES, CITA_SEALS, blankCita, citaTitle, nearbySlots, type CitaSeal } from '@/schema/cita';
+import { CITA_EYEBROWS, CITA_PHRASES, CITA_SEALS, blankCita, citaTitle, nearbySlots, type CitaEyebrow, type CitaSeal } from '@/schema/cita';
 
 export function CitaCreate({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
   const [question, setQuestion] = useState(CITA_PHRASES[0]);
   const [letter, setLetter] = useState('No hace falta que sea perfecto. Solo quiero verte.');
   const [seal, setSeal] = useState<CitaSeal>('heart');
+  const [eyebrow, setEyebrow] = useState<CitaEyebrow>('cita');
   const [envelope, setEnvelope] = useState('');
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const letterRef = useRef<HTMLTextAreaElement>(null);
@@ -36,11 +37,12 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
     doc.question = question.trim() || CITA_PHRASES[0];
     doc.letter = letter.trim();
     doc.seal = seal;
+    doc.eyebrow = eyebrow;
     doc.envelope = envelope.trim();
     doc.dates = dates.filter((item) => item.label.trim() || item.when);
     if (doc.dates.length === 0) doc.dates = [{ id: uid('when'), label: 'Cuando quieras', when: '' }];
     return doc;
-  }, [forName, fromName, question, letter, seal, envelope, dates]);
+  }, [forName, fromName, question, letter, seal, eyebrow, envelope, dates]);
   const finish = () => {
     if (once.current || saving) return;
     once.current = true;
@@ -87,6 +89,19 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
             <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">De parte de</span>
             <input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Alex" className="mt-2 w-full border-b border-black/10 bg-transparent py-3 text-2xl outline-none placeholder:text-inkwell/25" />
           </label>
+          <p className="mt-8 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Lo que pone arriba</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {CITA_EYEBROWS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setEyebrow(item.id)}
+                className={`rounded-full px-4 py-2 text-[14px] ${eyebrow === item.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+              >
+                {item.id === 'from' ? (fromName.trim() ? `De ${fromName.trim()}` : 'De quien invita') : item.label}
+              </button>
+            ))}
+          </div>
           <button type="button" disabled={!forName.trim()} onClick={() => setStep(1)} className="mt-10 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-30">
             Seguir
           </button>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { haptic } from '@/lib/haptics';
 import { pingVisit } from '@/lib/stats';
-import { formatDateOption, type CitaSeal, type DateAskDocument, type DateOption } from '@/schema/cita';
+import { citaEyebrowText, formatDateOption, type CitaSeal, type DateAskDocument, type DateOption } from '@/schema/cita';
 
 const HINTS = ['Otra vez', 'El lacre cede', 'Sigue', 'Casi', 'Uno más'];
 const SEAL_HINT: Record<CitaSeal, string> = {
@@ -162,7 +162,7 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
   return (
     <div ref={stage} className="cita-room relative flex h-full min-h-dvh flex-col items-center justify-center overflow-hidden px-5 py-10 text-[#f6ead8]" onPointerMove={onMove}>
       <p className="text-[11px] uppercase tracking-[0.22em] text-[#e8b86d]/80">
-        {doc.fromName.trim() ? `De ${doc.fromName.trim()}` : 'Una cita'}
+        {citaEyebrowText(doc)}
       </p>
       <h1 className="mt-2 max-w-[12ch] text-center font-display text-4xl italic leading-[0.95]">
         {doc.forName.trim() ? `Para ${doc.forName.trim()}` : 'Para ti'}

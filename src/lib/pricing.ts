@@ -1,4 +1,4 @@
-import { CITA_PHRASES, type DateAskDocument } from '@/schema/cita';
+import { CITA_PHRASES, citaEyebrowText, type DateAskDocument } from '@/schema/cita';
 import type { DeseosDocument } from '@/schema/deseos';
 import { isCita, isDeseos, type ProjectDocument } from '@/schema/project';
 import type { UniverseDocument } from '@/schema/universe';
@@ -144,7 +144,7 @@ function build(book: PriceBook, counts: Record<string, number>, flags: Record<st
 function citaCounts(doc: DateAskDocument) {
   const dates = doc.dates.filter((item) => item.label.trim() || item.when).length;
   return {
-    chars: lengthOf(doc.forName, doc.fromName, doc.question, doc.letter, doc.envelope, ...doc.dates.map((item) => item.label)),
+    chars: lengthOf(doc.forName, doc.fromName, citaEyebrowText(doc), doc.question, doc.letter, doc.envelope, ...doc.dates.map((item) => item.label)),
     dates,
   };
 }

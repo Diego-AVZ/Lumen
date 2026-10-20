@@ -8,6 +8,7 @@ import { siteRoot } from '@/lib/site';
 import { hashPhrase } from '@/lib/unlock';
 import { PayModal } from '@/hub/PayModal';
 import { InviteSheet } from '@/studio/InviteSheet';
+import { citaEyebrowText } from '@/schema/cita';
 import { extendMaintenance } from '@/schema/deseos';
 import { isCita, isDeseos, type ProjectDocument } from '@/schema/project';
 
@@ -266,7 +267,7 @@ export function PublishDialog({
           url={publicLink}
           title={forName ? (isDeseos(doc) ? forName : `Para ${forName}`) : 'Para ti'}
           from={fromName}
-          eyebrow={isCita(doc) ? 'Una cita' : isDeseos(doc) ? 'Una lista' : 'Un regalo'}
+          eyebrow={isCita(doc) ? citaEyebrowText(doc) : isDeseos(doc) ? 'Una lista' : 'Un regalo'}
           line={dedication || (isCita(doc) ? 'Tengo una pregunta para ti.' : isDeseos(doc) ? 'Entra con tu correo y escribe planes.' : 'Hay un cielo que quiero que abras.')}
           ready={Boolean(liveLink)}
           onClose={() => setInvite(false)}

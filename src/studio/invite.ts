@@ -240,7 +240,7 @@ function spotsFor(motif: Exclude<Motif, 'none'>, rand: Rand) {
       x = 108;
       y = 200 + along * (CARD_H - 520);
     }
-    if (x > 200 && x < CARD_W - 200 && y > 300 && y < CARD_H - 200) {
+    if (x > 200 && x < CARD_W - 200 && y > 150 && y < CARD_H - 200) {
       x = x < CARD_W / 2 ? 120 : CARD_W - 120;
     }
     const kind = motif === 'mix' ? kinds[i % kinds.length] : motif;
@@ -318,22 +318,24 @@ export function drawInvite(ctx: CanvasRenderingContext2D, paint: InvitePaint): {
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  const eyebrowY = 188;
   ctx.textAlign = 'center';
   ctx.fillStyle = paper.ink;
   ctx.letterSpacing = '6px';
   ctx.font = '600 26px Outfit, sans-serif';
-  ctx.fillText(paint.eyebrow.toUpperCase(), CARD_W / 2, 430);
+  ctx.fillText(paint.eyebrow.toUpperCase(), CARD_W / 2, eyebrowY);
   ctx.letterSpacing = '0px';
 
+  const ruleY = eyebrowY + 36;
   ctx.strokeStyle = hexAlpha(paper.accent, 0.7);
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 - 150, 468);
-  ctx.lineTo(CARD_W / 2 - 18, 468);
-  ctx.moveTo(CARD_W / 2 + 18, 468);
-  ctx.lineTo(CARD_W / 2 + 150, 468);
+  ctx.moveTo(CARD_W / 2 - 150, ruleY);
+  ctx.lineTo(CARD_W / 2 - 18, ruleY);
+  ctx.moveTo(CARD_W / 2 + 18, ruleY);
+  ctx.lineTo(CARD_W / 2 + 150, ruleY);
   ctx.stroke();
-  spark(ctx, CARD_W / 2, 468, 10, paper.accent);
+  spark(ctx, CARD_W / 2, ruleY, 10, paper.accent);
 
   const title = paint.title.trim() || 'Para ti';
   let titleSize = 118;
@@ -343,11 +345,12 @@ export function drawInvite(ctx: CanvasRenderingContext2D, paint: InvitePaint): {
     ctx.font = `italic 600 ${titleSize}px Fraunces, Georgia, serif`;
   }
   ctx.fillStyle = paper.ink;
-  ctx.fillText(title, CARD_W / 2, 470 + titleSize);
+  const titleY = ruleY + 8 + titleSize;
+  ctx.fillText(title, CARD_W / 2, titleY);
 
   ctx.font = '400 34px Outfit, sans-serif';
   const phrase = wrap(ctx, paint.line.trim() || 'Hay algo que quiero que abras.', 760).slice(0, 3);
-  let y = 500 + titleSize + 20;
+  let y = titleY + 28;
   ctx.fillStyle = hexAlpha(paper.ink, 0.78);
   for (const row of phrase) {
     y += 48;
