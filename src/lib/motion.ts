@@ -29,6 +29,28 @@ export function slugify(value: string) {
   return slug || 'universo';
 }
 
+const TAG = 'abcdefghjkmnpqrstuvwxyz23456789';
+
+export function shortTag(n = 6) {
+  const bytes = new Uint8Array(n);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) crypto.getRandomValues(bytes);
+  else for (let i = 0; i < n; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  return Array.from(bytes, (byte) => TAG[byte % TAG.length]).join('');
+}
+
+export function giftTagOf(slug: string) {
+  return /-([a-z0-9]{6})$/.exec(slug)?.[1] ?? '';
+}
+
+export function makeGiftSlug(label: string, existing = '') {
+  const base = slugify(label);
+  if (existing) {
+    const tag = giftTagOf(existing);
+    return tag ? `${base}-${tag}` : existing;
+  }
+  return `${base}-${shortTag()}`;
+}
+
 export function samePhrase(a: string, b: string) {
   const norm = (s: string) =>
     s

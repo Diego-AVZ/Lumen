@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { saveUniverse } from '@/lib/cloud';
-import { copyText, slugify } from '@/lib/motion';
+import { copyText, giftTagOf, makeGiftSlug, shortTag, slugify } from '@/lib/motion';
 import { siteRoot } from '@/lib/site';
 import { hashPhrase } from '@/lib/unlock';
 import { isCita, type ProjectDocument } from '@/schema/project';
@@ -20,11 +20,13 @@ export function PublishDialog({
   onClose: () => void;
   onPublished: (doc: ProjectDocument) => void;
 }) {
-  const suggestion = useMemo(
-    () => doc.meta.slug || slugify(forNameOf(doc) ? `para-${forNameOf(doc)}` : doc.meta.title),
-    [doc],
-  );
+  const frozen = Boolean(doc.meta.slug && doc.meta.status === 'published');
+  const suggestion = useMemo(() => {
+    if (doc.meta.slug) return giftTagOf(doc.meta.slug) ? doc.meta.slug.replace(/-[a-z0-9]{6}$/, '') : doc.meta.slug;
+    return slugify(forNameOf(doc) ? `para-${forNameOf(doc)}` : doc.meta.title);
+  }, [doc]);
   const [slug, setSlug] = useState(suggestion);
+  const [tag] = useState(() => giftTagOf(doc.meta.slug) || shortTag());
   const [urls, setUrls] = useState<string[]>(() => [siteRoot()]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,6 +51,7 @@ export function PublishDialog({
     urls.find((url) => !url.includes('localhost') && !url.includes('127.0.0.1')) ??
     urls[0];
   const draftLink = `${phone}/p/${doc.meta.id}`;
+  const previewSlug = frozen ? doc.meta.slug : `${slugify(slug)}-${tag}`;
   const liveLink = doc.meta.status === 'published' && doc.meta.slug ? `${phone}/u/${doc.meta.slug}` : '';
   const shareLink = liveLink || draftLink;
 
@@ -74,26 +77,35 @@ export function PublishDialog({
   };
 
   const publish = async () => {
-    const nextSlug = slugify(slug);
     setBusy(true);
     setError('');
     let unlockHash = doc.meta.unlockHash;
     if (clearLock) unlockHash = undefined;
     else if (phrase.trim()) unlockHash = await hashPhrase(phrase.trim());
-    const next: ProjectDocument = {
-      ...doc,
-      meta: {
-        ...doc.meta,
-        slug: nextSlug,
-        status: 'published',
-        publishedAt: new Date().toISOString(),
-        unlockHash,
-      },
-    };
+    let nextSlug = frozen ? doc.meta.slug : `${slugify(slug)}-${tag}`;
     try {
-      await saveUniverse(next);
-      onPublished(next);
-      setSlug(nextSlug);
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const next: ProjectDocument = {
+          ...doc,
+          meta: {
+            ...doc.meta,
+            slug: nextSlug,
+            status: 'published',
+            publishedAt: doc.meta.publishedAt ?? new Date().toISOString(),
+            unlockHash,
+          },
+        };
+        try {
+          await saveUniverse(next);
+          onPublished(next);
+          setSlug(nextSlug);
+          return;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : '';
+          if (frozen || attempt === 3 || !/duplicate|unique|23505/i.test(message)) throw err;
+          nextSlug = makeGiftSlug(slug);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo publicar.');
     } finally {
@@ -126,11 +138,18 @@ export function PublishDialog({
           <label className="text-[11px] uppercase tracking-[0.16em] text-inkwell/45">Nombre del enlace</label>
           <div className="mt-2 flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10">
             <span className="text-inkwell/35">/u/</span>
-            <input value={slug} onChange={(e) => setSlug(e.target.value)} className="w-full bg-transparent py-3 outline-none" />
+            <input
+              value={frozen ? doc.meta.slug : slug}
+              onChange={(e) => setSlug(e.target.value)}
+              readOnly={frozen}
+              className="w-full bg-transparent py-3 outline-none"
+            />
           </div>
-          {doc.meta.slug && slugify(slug) !== doc.meta.slug && (
-            <p className="mt-2 text-[12.5px] text-inkwell/50">Si cambias el enlace, el anterior deja de abrir.</p>
-          )}
+          <p className="mt-2 text-[12.5px] leading-relaxed text-inkwell/50">
+            {frozen
+              ? 'Este enlace ya está publicado. Si lo cambias, el anterior deja de abrir.'
+              : `Quedará /u/${previewSlug}. El final es único, para que dos “para-candela” no se pisen.`}
+          </p>
         </div>
 
         <div className="mt-6">
@@ -164,7 +183,7 @@ export function PublishDialog({
           </button>
         </div>
         <p className="mt-4 text-[12px] leading-relaxed text-inkwell/40">
-          También desde este ordenador: {urls[0]}/u/{slugify(slug)}
+          También desde este ordenador: {urls[0]}/u/{frozen ? doc.meta.slug : previewSlug}
         </p>
       </div>
     </div>
