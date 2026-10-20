@@ -33,7 +33,7 @@ export function DateAskStudio({ id }: { id: string }) {
     const handle = window.setTimeout(() => {
       const next = { ...doc, meta: { ...doc.meta, title: citaTitle(doc), updatedAt: new Date().toISOString() } };
       void saveDraft(next).catch(() => undefined);
-    }, 380);
+    }, 700);
     return () => window.clearTimeout(handle);
   }, [doc]);
 

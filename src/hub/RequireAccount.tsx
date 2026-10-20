@@ -1,15 +1,20 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { HubShell } from '@/hub/HubShell';
-import { migrateLocalDrafts } from '@/lib/drafts';
-import { AccountBar, useSession } from '@/studio/AccountBar';
+import { hasLocalDrafts, migrateLocalDrafts } from '@/lib/drafts';
+import { useSession } from '@/lib/session';
+import { AccountBar } from '@/studio/AccountBar';
 
 export function RequireAccount({ children }: { children: ReactNode }) {
   const { user, ready } = useSession();
-  const [migrated, setMigrated] = useState(false);
+  const [migrated, setMigrated] = useState(() => !hasLocalDrafts());
 
   useEffect(() => {
     if (!user) {
-      setMigrated(false);
+      setMigrated(!hasLocalDrafts());
+      return;
+    }
+    if (!hasLocalDrafts()) {
+      setMigrated(true);
       return;
     }
     let cancel = false;

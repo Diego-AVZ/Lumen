@@ -8,8 +8,8 @@ const BUCKET = 'fotos';
 
 export async function currentUser(): Promise<User | null> {
   if (!supabase) return null;
-  const { data } = await supabase.auth.getUser();
-  return data.user;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user ?? null;
 }
 
 export function accountReturnTo() {
@@ -69,16 +69,44 @@ async function googleProviderEnabled() {
 
 export async function signOut() {
   if (!supabase) return;
+  invalidateMine();
   await supabase.auth.signOut();
 }
 
+const profileOk = new Set<string>();
+const rowIds = new Map<string, string>();
+let listCache: { userId: string; at: number; rows: CloudUniverse[] } | null = null;
+let listInflight: Promise<CloudUniverse[]> | null = null;
+
+export function invalidateMine() {
+  listCache = null;
+}
+
+function rememberRowId(localId: string, uuid?: string | null) {
+  if (localId && uuid) rowIds.set(localId, uuid);
+}
+
 async function ensureProfile(user: User) {
-  if (!supabase) return;
+  if (!supabase || profileOk.has(user.id)) return;
+  try {
+    if (sessionStorage.getItem(`lumen.profile.${user.id}`)) {
+      profileOk.add(user.id);
+      return;
+    }
+  } catch {
+    /* sigue */
+  }
   const { error } = await supabase.from('profiles').upsert(
     { id: user.id, display_name: user.email ?? '' },
     { onConflict: 'id' },
   );
   if (error) throw cloudError(error);
+  profileOk.add(user.id);
+  try {
+    sessionStorage.setItem(`lumen.profile.${user.id}`, '1');
+  } catch {
+    /* sigue */
+  }
 }
 
 const inflight = new Map<string, Promise<void>>();
@@ -116,6 +144,10 @@ async function persistUniverse(doc: ProjectDocument) {
     unlock_hash: doc.meta.unlockHash || null,
   };
   const write = async (body: typeof row | Omit<typeof row, 'unlock_hash'>) => {
+    const known = rowIds.get(doc.meta.id);
+    if (known) {
+      return db.from('universes').update(body).eq('id', known).eq('owner_id', user.id);
+    }
     const found = await db
       .from('universes')
       .select('id')
@@ -125,9 +157,12 @@ async function persistUniverse(doc: ProjectDocument) {
       .limit(1)
       .maybeSingle();
     if (found.data?.id) {
+      rowIds.set(doc.meta.id, found.data.id as string);
       return db.from('universes').update(body).eq('id', found.data.id).eq('owner_id', user.id);
     }
-    return db.from('universes').insert(body);
+    const inserted = await db.from('universes').insert(body).select('id').maybeSingle();
+    if (inserted.data?.id) rowIds.set(doc.meta.id, inserted.data.id as string);
+    return inserted;
   };
   let result = await write(row);
   if (result.error && /unlock_hash/.test(result.error.message)) {
@@ -135,6 +170,7 @@ async function persistUniverse(doc: ProjectDocument) {
     result = await write(legacy);
   }
   if (result.error) throw cloudError(result.error);
+  invalidateMine();
 }
 
 function unwrapJson(raw: unknown): unknown {
@@ -250,38 +286,48 @@ function kindOfId(id: string): 'universo' | 'cita' {
 export async function listMine(): Promise<CloudUniverse[]> {
   const user = await currentUser();
   if (!supabase || !user) return [];
-  const { data, error } = await supabase
-    .from('universes')
-    .select('id, local_id, title, slug, status, updated_at')
-    .eq('owner_id', user.id)
-    .order('updated_at', { ascending: false });
-  if (error || !data) return [];
-  const keep: typeof data = [];
-  const extra: string[] = [];
-  const seen = new Set<string>();
-  for (const row of data) {
-    const local = String(row.local_id || '');
-    if (!local || seen.has(local)) {
-      extra.push(String(row.id));
-      continue;
+  if (listCache && listCache.userId === user.id && Date.now() - listCache.at < 12_000) return listCache.rows;
+  if (listInflight) return listInflight;
+  listInflight = (async () => {
+    const { data, error } = await supabase
+      .from('universes')
+      .select('id, local_id, title, slug, status, updated_at')
+      .eq('owner_id', user.id)
+      .order('updated_at', { ascending: false });
+    if (error || !data) return [];
+    const keep: typeof data = [];
+    const extra: string[] = [];
+    const seen = new Set<string>();
+    for (const row of data) {
+      const local = String(row.local_id || '');
+      if (!local || seen.has(local)) {
+        extra.push(String(row.id));
+        continue;
+      }
+      seen.add(local);
+      rememberRowId(local, String(row.id));
+      keep.push(row);
     }
-    seen.add(local);
-    keep.push(row);
-  }
-  if (extra.length) {
-    void supabase.from('universes').delete().in('id', extra).eq('owner_id', user.id);
-  }
-  return keep.map((row) => {
-    const id = String(row.local_id);
-    return {
-      id,
-      title: String(row.title ?? ''),
-      slug: String(row.slug ?? ''),
-      status: row.status === 'published' ? 'published' : 'draft',
-      updatedAt: String(row.updated_at ?? ''),
-      kind: kindOfId(id),
-    };
+    if (extra.length) {
+      void supabase.from('universes').delete().in('id', extra).eq('owner_id', user.id);
+    }
+    const rows = keep.map((row) => {
+      const id = String(row.local_id);
+      return {
+        id,
+        title: String(row.title ?? ''),
+        slug: String(row.slug ?? ''),
+        status: row.status === 'published' ? 'published' : 'draft',
+        updatedAt: String(row.updated_at ?? ''),
+        kind: kindOfId(id),
+      } satisfies CloudUniverse;
+    });
+    listCache = { userId: user.id, at: Date.now(), rows };
+    return rows;
+  })().finally(() => {
+    listInflight = null;
   });
+  return listInflight;
 }
 
 export async function loadOwned(localId: string): Promise<ProjectDocument | null> {
@@ -289,16 +335,17 @@ export async function loadOwned(localId: string): Promise<ProjectDocument | null
   if (!supabase || !user || !localId) return null;
   const full = await supabase
     .from('universes')
-    .select('document, unlock_hash')
+    .select('id, document, unlock_hash')
     .eq('local_id', localId)
     .eq('owner_id', user.id)
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
   const row = full.error && /unlock_hash/.test(full.error.message)
-    ? await supabase.from('universes').select('document').eq('local_id', localId).eq('owner_id', user.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+    ? await supabase.from('universes').select('id, document').eq('local_id', localId).eq('owner_id', user.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
     : full;
   if (row.error || !row.data?.document) return null;
+  rememberRowId(localId, 'id' in row.data ? String(row.data.id) : '');
   try {
     const doc = parseProject(row.data.document);
     const hash = 'unlock_hash' in row.data && typeof row.data.unlock_hash === 'string' ? row.data.unlock_hash : '';
@@ -313,6 +360,8 @@ export async function deleteCloudUniverse(localId: string) {
   if (!supabase) return;
   const user = await currentUser();
   if (!user) return;
+  rowIds.delete(localId);
+  invalidateMine();
   const { error } = await supabase.from('universes').delete().eq('local_id', localId);
   if (error) throw cloudError(error);
 }

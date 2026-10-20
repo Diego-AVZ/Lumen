@@ -1,24 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { User } from '@supabase/supabase-js';
 import { gmailInbox, listMine, sendMagicLink, signInWithGoogle, signOut, type CloudUniverse } from '@/lib/cloud';
 import { purgeProject } from '@/lib/drafts';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
-import { cloudEnabled, supabase } from '@/lib/supabase';
+import { useSession } from '@/lib/session';
+import { cloudEnabled } from '@/lib/supabase';
 
-export function useSession() {
-  const [user, setUser] = useState<User | null>(null);
-  const [ready, setReady] = useState(!cloudEnabled());
-  useEffect(() => {
-    if (!supabase) return;
-    void supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
-      setReady(true);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
-    return () => data.subscription.unsubscribe();
-  }, []);
-  return { user, ready };
-}
+export { useSession } from '@/lib/session';
 
 export function AccountBar({
   onOpen,

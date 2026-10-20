@@ -27,6 +27,19 @@ function githubPagesSpa() {
 export default defineConfig({
   base: process.env.VITE_BASE || '/',
   plugins: [react(), universesApi(), githubPagesSpa()],
+  build: {
+    modulePreload: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/@supabase')) return 'supabase';
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'react';
+          if (id.includes('leaflet') || id.includes('react-leaflet')) return 'map';
+          return undefined;
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from '@/lib/cloud';
 import { HUB_VISTAS, type HubVista } from '@/hub/catalog';
-import { useSession } from '@/studio/AccountBar';
+import { useSession } from '@/lib/session';
 
 function vistaFromPath(pathname: string, search: string): HubVista {
   if (pathname.startsWith('/crear/nuevo')) return 'crear';

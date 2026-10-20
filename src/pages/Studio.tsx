@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { DateAskStudio } from '@/pages/DateAskStudio';
 import { saveDraft } from '@/lib/drafts';
 import { downloadText } from '@/lib/motion';
 import { exampleDocument } from '@/schema/example';
@@ -23,8 +22,6 @@ import { isCita } from '@/schema/project';
 type Mode = 'portada' | 'cielo' | 'dentro';
 
 export function Studio() {
-  const { id = '' } = useParams();
-  if (id.startsWith('cita_')) return <DateAskStudio id={id} />;
   return <UniverseStudio />;
 }
 

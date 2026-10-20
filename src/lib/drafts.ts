@@ -52,7 +52,20 @@ export async function purgeProject(id: string, _slug = '') {
   await deleteCloudUniverse(id);
 }
 
+export function hasLocalDrafts() {
+  try {
+    if (localStorage.getItem(INDEX)) return true;
+    for (let i = 0; i < localStorage.length; i += 1) {
+      if (localStorage.key(i)?.startsWith('lumen.doc.v1.')) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 export async function migrateLocalDrafts() {
+  if (!hasLocalDrafts()) return;
   try {
     const raw = localStorage.getItem(INDEX);
     const rows = raw ? (JSON.parse(raw) as { id?: string }[]) : [];
