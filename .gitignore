@@ -5,6 +5,7 @@ dist
 .env
 .env.*
 !.env.example
+!.env.production
 data/drafts/*.json
 data/universes/*.json
 data/visits.json

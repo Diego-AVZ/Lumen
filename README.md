@@ -20,10 +20,7 @@ Cada push a `main` publica en:
 
 https://diego-avz.github.io/Lumen/
 
-En el repositorio, Settings → Secrets and variables → Actions, añade:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+El build de Pages lee `.env.production` (URL y clave anónima de Supabase; esa clave es pública a propósito).
 
 Settings → Pages → Source: **GitHub Actions**.
 
