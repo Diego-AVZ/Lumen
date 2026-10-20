@@ -258,12 +258,25 @@ begin
   if p_kind = 'start' then
     track := track || jsonb_build_object(
       'opens', coalesce((track->>'opens')::int, 0) + 1,
-      'startedAt', now_ts,
-      'lastMs', 0
+      'lastMs', greatest(
+        coalesce((track->>'lastMs')::int, 0),
+        case
+          when coalesce(track->>'startedAt', '') <> '' and coalesce(track->>'lastAt', '') <> ''
+          then greatest(0, (extract(epoch from ((track->>'lastAt')::timestamptz - (track->>'startedAt')::timestamptz)) * 1000)::int)
+          else 0
+        end
+      ),
+      'startedAt', now_ts
     );
-  elsif p_kind = 'pulse' and coalesce(track->>'startedAt', '') <> '' then
+  elsif p_kind = 'pulse' then
+    if coalesce(track->>'startedAt', '') = '' then
+      track := track || jsonb_build_object('startedAt', now_ts);
+    end if;
     track := track || jsonb_build_object(
-      'lastMs', greatest(0, (extract(epoch from (now_ts - (track->>'startedAt')::timestamptz)) * 1000)::int)
+      'lastMs', greatest(
+        coalesce((track->>'lastMs')::int, 0),
+        greatest(0, (extract(epoch from (now_ts - (track->>'startedAt')::timestamptz)) * 1000)::int)
+      )
     );
   elsif p_kind = 'no' then
     track := track || jsonb_build_object(
@@ -305,7 +318,19 @@ as $$
         jsonb_build_object(
           'opens', coalesce((select sum(coalesce((v.state->'track'->>'opens')::int, 0)) from public.universe_visits v where v.universe_id = u.id), 0),
           'lastAt', coalesce((select max(v.state->'track'->>'lastAt') from public.universe_visits v where v.universe_id = u.id), ''),
-          'lastMs', coalesce((select max(coalesce((v.state->'track'->>'lastMs')::int, 0)) from public.universe_visits v where v.universe_id = u.id), 0),
+          'lastMs', coalesce((
+            select max(greatest(
+              coalesce((v.state->'track'->>'lastMs')::int, 0),
+              case
+                when coalesce(v.state->'track'->>'startedAt', '') <> ''
+                  and coalesce(v.state->'track'->>'lastAt', '') <> ''
+                then greatest(0, (extract(epoch from ((v.state->'track'->>'lastAt')::timestamptz - (v.state->'track'->>'startedAt')::timestamptz)) * 1000)::int)
+                else 0
+              end
+            ))
+            from public.universe_visits v
+            where v.universe_id = u.id
+          ), 0),
           'noTries', coalesce((select sum(coalesce((v.state->'track'->>'noTries')::int, 0)) from public.universe_visits v where v.universe_id = u.id), 0),
           'reply', (
             select v.state->'track'->'reply'
@@ -490,3 +515,68 @@ revoke all on function public.release_purchase(uuid) from public, anon;
 grant execute on function public.mock_checkout(text, text, text, text, text) to authenticated;
 grant execute on function public.claim_purchase(text, text) to authenticated;
 grant execute on function public.release_purchase(uuid) to authenticated;
+
+-- Cobro al publicar. El importe lo calcula la app (src/lib/pricing.ts) y aquí solo se guarda.
+create or replace function public.mock_pay(
+  p_project text,
+  p_family text,
+  p_cents integer,
+  p_rail text,
+  p_asset text default '',
+  p_network text default '',
+  p_wallet text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  row public.purchases;
+  plan text;
+begin
+  if uid is null then
+    raise exception 'Entra en la cuenta para pagar.';
+  end if;
+  if coalesce(p_project, '') = '' then
+    raise exception 'Falta el proyecto.';
+  end if;
+  if p_family = 'cita' then
+    plan := 'cita';
+  elsif p_family = 'plantilla' then
+    plan := 'plantilla';
+  else
+    raise exception 'Ese regalo no se cobra.';
+  end if;
+  if p_cents < 50 or p_cents > 50000 then
+    raise exception 'Ese importe no cuadra.';
+  end if;
+  if p_rail not in ('card', 'crypto') then
+    raise exception 'Esa forma de pago no vale.';
+  end if;
+  insert into public.profiles (id) values (uid) on conflict (id) do nothing;
+  insert into public.purchases (
+    owner_id, plan, amount_cents, currency, rail, asset, network, wallet, status, project_id, mock, used_at
+  )
+  values (
+    uid,
+    plan,
+    p_cents,
+    'eur',
+    p_rail,
+    left(coalesce(p_asset, ''), 24),
+    left(coalesce(p_network, ''), 32),
+    left(coalesce(p_wallet, ''), 80),
+    'used',
+    left(p_project, 80),
+    true,
+    now()
+  )
+  returning * into row;
+  return to_jsonb(row);
+end;
+$$;
+
+revoke all on function public.mock_pay(text, text, integer, text, text, text, text) from public, anon;
+grant execute on function public.mock_pay(text, text, integer, text, text, text, text) to authenticated;

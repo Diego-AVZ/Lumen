@@ -88,14 +88,21 @@ export function Gift({ kind }: { kind: 'published' | 'draft' }) {
   useEffect(() => {
     if (!visitId) return;
     void pingVisit(visitId, 'start');
-    const beat = window.setInterval(() => void pingVisit(visitId, 'pulse'), 20000);
+    const beat = window.setInterval(() => void pingVisit(visitId, 'pulse'), 5000);
+    const soon = window.setTimeout(() => void pingVisit(visitId, 'pulse'), 1200);
+    const onLeave = () => {
+      void pingVisit(visitId, 'pulse');
+    };
     const onHide = () => {
-      if (document.visibilityState === 'hidden') void pingVisit(visitId, 'pulse');
+      if (document.visibilityState === 'hidden') onLeave();
     };
     document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onLeave);
     return () => {
       window.clearInterval(beat);
+      window.clearTimeout(soon);
       document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onLeave);
       void pingVisit(visitId, 'pulse');
     };
   }, [visitId]);

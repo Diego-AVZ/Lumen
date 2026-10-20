@@ -355,10 +355,12 @@ export function universesApi(): Plugin {
             const current = all[id] ?? { opens: 0, lastAt: '', lastMs: 0, started: {}, noTries: 0 };
             if (kind === 'start') {
               current.opens += 1;
+              if (current.started[visitor] && current.lastAt) {
+                current.lastMs = Math.max(current.lastMs, Math.max(0, new Date(current.lastAt).getTime() - new Date(current.started[visitor]).getTime()));
+              }
               current.started[visitor] = now;
-              current.lastMs = 0;
             } else if (kind === 'pulse' && current.started[visitor]) {
-              current.lastMs = Math.max(0, Date.now() - new Date(current.started[visitor]).getTime());
+              current.lastMs = Math.max(current.lastMs, Math.max(0, Date.now() - new Date(current.started[visitor]).getTime()));
             } else if (kind === 'no') {
               current.noTries += 1;
             } else if (kind === 'reply') {

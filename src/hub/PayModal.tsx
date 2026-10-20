@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CHAINS, createPath, euros, planById, type ChainId, type PayAsset, type PlanId } from '@/lib/plans';
-import { mockCheckout } from '@/lib/purchases';
+import { CHAINS, euros, type ChainId, type PayAsset, type PlanFamily } from '@/lib/plans';
+import { mockPay } from '@/lib/purchases';
 
 type Rail = 'card' | 'crypto';
 type Phase = 'form' | 'confirm' | 'working' | 'done';
@@ -19,9 +18,21 @@ function shortAddress(value: string) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
-export function PayModal({ plan: planId, onClose, onCreate }: { plan: PlanId; onClose: () => void; onCreate?: (plan: PlanId) => void }) {
-  const navigate = useNavigate();
-  const plan = planById(planId);
+export function PayModal({
+  title,
+  cents,
+  projectId,
+  family,
+  onClose,
+  onPaid,
+}: {
+  title: string;
+  cents: number;
+  projectId: string;
+  family: PlanFamily;
+  onClose: () => void;
+  onPaid: () => void;
+}) {
   const gone = useRef(false);
   const paying = useRef(false);
   const [rail, setRail] = useState<Rail>('card');
@@ -75,8 +86,10 @@ export function PayModal({ plan: planId, onClose, onCreate }: { plan: PlanId; on
       if (gone.current) return;
     }
     try {
-      const row = await mockCheckout({
-        plan: plan.id,
+      const row = await mockPay({
+        projectId,
+        family,
+        cents,
         rail,
         asset: rail === 'crypto' ? asset : 'card',
         network: rail === 'crypto' ? network : '',
@@ -91,11 +104,6 @@ export function PayModal({ plan: planId, onClose, onCreate }: { plan: PlanId; on
       setError(err instanceof Error ? err.message : 'No se pudo guardar el pago.');
       setPhase('confirm');
     }
-  };
-
-  const create = () => {
-    if (onCreate) onCreate(plan.id);
-    else navigate(createPath(plan.id));
   };
 
   return (
@@ -114,15 +122,15 @@ export function PayModal({ plan: planId, onClose, onCreate }: { plan: PlanId; on
           <>
             <p className="text-[11px] uppercase tracking-[0.18em] text-brass">Listo</p>
             <h2 id="pay-title" className="mt-3 font-display text-[2.6rem] italic leading-[0.95]">
-              {plan.name} ya es tuyo
+              {title} está pagado
             </h2>
             <p className="mt-4 text-[16px] leading-relaxed text-inkwell/65">
-              {euros(plan.priceCents)} · pago de prueba. No se ha cobrado.
-              {reference ? ` Referencia ${reference}.` : ''} Queda libre hasta que crees el proyecto.
+              {euros(cents)} · pago de prueba. No se ha cobrado.
+              {reference ? ` Referencia ${reference}.` : ''} Ya puedes publicarlo.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <button type="button" onClick={create} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen">
-                Crear ahora
+              <button type="button" onClick={onPaid} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen">
+                Seguir
               </button>
               <button type="button" onClick={onClose} className="rounded-full px-5 py-3 text-[14px] ring-1 ring-black/10">
                 Cerrar
@@ -157,9 +165,9 @@ export function PayModal({ plan: planId, onClose, onCreate }: { plan: PlanId; on
           <>
             <p className="text-[11px] uppercase tracking-[0.18em] text-brass">Confirmar pago</p>
             <h2 id="pay-title" className="mt-3 font-display text-[2.6rem] italic leading-[0.95]">
-              {plan.name}
+              {title}
             </h2>
-            <p className="mt-3 font-display text-4xl italic">{euros(plan.priceCents)}</p>
+            <p className="mt-3 font-display text-4xl italic">{euros(cents)}</p>
             <p className="mt-4 text-[15px] leading-relaxed text-inkwell/65">
               {rail === 'card'
                 ? 'Tarjeta de prueba, por Stripe. No se cobra y no guardamos el número.'
@@ -186,12 +194,12 @@ export function PayModal({ plan: planId, onClose, onCreate }: { plan: PlanId; on
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-brass">Pagar</p>
                 <h2 id="pay-title" className="mt-2 font-display text-[2.5rem] italic leading-none">
-                  {plan.name}
+                  {title}
                 </h2>
               </div>
-              <p className="font-display text-3xl italic">{euros(plan.priceCents)}</p>
+              <p className="font-display text-3xl italic">{euros(cents)}</p>
             </div>
-            <p className="mt-4 text-[15px] leading-relaxed text-inkwell/60">{plan.line} Un pago abre un proyecto.</p>
+            <p className="mt-4 text-[15px] leading-relaxed text-inkwell/60">Se cobra al publicar. Un pago de prueba: no sale dinero.</p>
 
             <div className="mt-6 grid grid-cols-2 gap-2 rounded-full bg-white p-1 ring-1 ring-black/5">
               {([
@@ -297,7 +305,7 @@ export function PayModal({ plan: planId, onClose, onCreate }: { plan: PlanId; on
                 onClick={() => setPhase('confirm')}
                 className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen disabled:opacity-30"
               >
-                Pagar {euros(plan.priceCents)}
+                Pagar {euros(cents)}
               </button>
               <button type="button" onClick={onClose} className="rounded-full px-5 py-3 text-[14px] ring-1 ring-black/10">
                 Ahora no

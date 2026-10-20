@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
 
+const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
 const VISITOR = 'lumen.visitor.v1';
 
 export type VisitReply = {
@@ -46,15 +49,31 @@ function asTrack(state: unknown): TrackState {
   return {};
 }
 
+function sessionMs(startedAt?: string) {
+  if (!startedAt) return 0;
+  const then = new Date(startedAt).getTime();
+  if (Number.isNaN(then)) return 0;
+  return Math.max(0, Date.now() - then);
+}
+
+function spanMs(from?: string, to?: string) {
+  if (!from || !to) return 0;
+  const a = new Date(from).getTime();
+  const b = new Date(to).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b) || b < a) return 0;
+  return b - a;
+}
+
 function applyKind(track: TrackState, kind: 'start' | 'pulse' | 'reply' | 'no', extra?: { dateId?: string; dateLabel?: string }): TrackState {
   const now = new Date().toISOString();
-  const next: TrackState = { ...track, lastAt: now };
+  const kept = Math.max(track.lastMs ?? 0, spanMs(track.startedAt, track.lastAt));
+  const next: TrackState = { ...track, lastAt: now, lastMs: kept };
   if (kind === 'start') {
     next.opens = (track.opens ?? 0) + 1;
     next.startedAt = now;
-    next.lastMs = 0;
-  } else if (kind === 'pulse' && track.startedAt) {
-    next.lastMs = Math.max(0, Date.now() - new Date(track.startedAt).getTime());
+  } else if (kind === 'pulse') {
+    next.startedAt = track.startedAt || now;
+    next.lastMs = Math.max(kept, sessionMs(next.startedAt));
   } else if (kind === 'no') {
     next.noTries = (track.noTries ?? 0) + 1;
   } else if (kind === 'reply') {
@@ -75,6 +94,9 @@ async function pingCloud(
 ) {
   if (!supabase) return false;
   const visitor = visitorKey().slice(0, 80);
+  if (kind === 'pulse' && closing()) {
+    if (await beaconPing(id, visitor, extra)) return true;
+  }
   const rpc = await supabase.rpc('ping_gift', {
     p_local_id: id,
     p_visitor: visitor,
@@ -109,17 +131,52 @@ async function pingCloud(
   return !written.error;
 }
 
+function closing() {
+  return document.visibilityState === 'hidden';
+}
+
+async function beaconPing(id: string, visitor: string, extra?: { dateId?: string; dateLabel?: string }) {
+  if (!url || !anon) return false;
+  const body = JSON.stringify({
+    p_local_id: id,
+    p_visitor: visitor,
+    p_kind: 'pulse',
+    p_date_id: extra?.dateId ?? '',
+    p_date_label: extra?.dateLabel ?? '',
+  });
+  try {
+    const sent = await fetch(`${url}/rest/v1/rpc/ping_gift`, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        apikey: anon,
+        Authorization: `Bearer ${anon}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body,
+    });
+    return sent.ok;
+  } catch {
+    return false;
+  }
+}
+
+function visitMs(track: TrackState) {
+  return Math.max(track.lastMs ?? 0, spanMs(track.startedAt, track.lastAt));
+}
+
 function mergeStat(into: VisitStat, track: TrackState): VisitStat {
   const next: VisitStat = {
     opens: into.opens + (track.opens ?? 0),
     lastAt: into.lastAt,
-    lastMs: Math.max(into.lastMs, track.lastMs ?? 0),
+    lastMs: Math.max(into.lastMs, visitMs(track)),
     noTries: (into.noTries ?? 0) + (track.noTries ?? 0),
     reply: into.reply,
   };
   if (track.lastAt && track.lastAt > (next.lastAt || '')) {
     next.lastAt = track.lastAt;
-    next.lastMs = Math.max(next.lastMs, track.lastMs ?? 0);
+    next.lastMs = Math.max(next.lastMs, visitMs(track));
   }
   if (track.reply && (!next.reply || track.reply.at > next.reply.at)) next.reply = track.reply;
   return next;
@@ -130,7 +187,7 @@ function asVisitStat(raw: unknown): VisitStat {
   return {
     opens: track.opens ?? 0,
     lastAt: track.lastAt ?? '',
-    lastMs: track.lastMs ?? 0,
+    lastMs: visitMs(track),
     noTries: track.noTries ?? 0,
     reply: track.reply,
   };
@@ -222,10 +279,10 @@ export function clock(iso?: string) {
   }).format(date);
 }
 
-export function lasted(ms?: number) {
-  if (!ms || ms < 5000) return '—';
+export function lasted(ms?: number, opens?: number) {
+  if (!ms || ms < 1000) return opens ? 'unos segundos' : '—';
   const minutes = Math.round(ms / 60000);
-  if (minutes < 1) return `${Math.round(ms / 1000)} s`;
+  if (minutes < 1) return `${Math.max(1, Math.round(ms / 1000))} s`;
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;

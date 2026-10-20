@@ -54,7 +54,7 @@ function explain(error: { message?: string; code?: string } | null) {
   if (
     error?.code === 'PGRST202' ||
     error?.code === 'PGRST205' ||
-    /mock_checkout|claim_purchase|release_purchase|purchases|schema cache/i.test(message)
+    /mock_checkout|mock_pay|claim_purchase|release_purchase|purchases|schema cache/i.test(message)
   ) {
     return 'Falta el SQL de compras en Supabase. Está al final de schema.sql, en el bloque de purchases.';
   }
@@ -138,6 +138,31 @@ export async function mockCheckout(input: {
   return row;
 }
 
+export async function mockPay(input: {
+  projectId: string;
+  family: PlanFamily;
+  cents: number;
+  rail: 'card' | 'crypto';
+  asset?: string;
+  network?: string;
+  wallet?: string;
+}) {
+  if (!supabase) throw new Error('Supabase no está configurado.');
+  const { data, error } = await supabase.rpc('mock_pay', {
+    p_project: input.projectId,
+    p_family: input.family,
+    p_cents: input.cents,
+    p_rail: input.rail,
+    p_asset: input.asset ?? '',
+    p_network: input.network ?? '',
+    p_wallet: input.wallet ?? '',
+  });
+  if (error) throw new Error(explain(error));
+  const row = one(data);
+  invalidate();
+  return row;
+}
+
 export async function claimPurchase(plan: PlanId, projectId: string) {
   if (!supabase) throw new Error('Supabase no está configurado.');
   const { data, error } = await supabase.rpc('claim_purchase', { p_plan: plan, p_project: projectId });
@@ -167,6 +192,10 @@ export function openPlans(rows: Purchase[], family: PlanFamily) {
   return plansInFamily(family)
     .filter((plan) => rows.some((row) => row.plan === plan.id && isFree(row)))
     .map((plan) => plan.id);
+}
+
+export function paidToward(rows: Purchase[], projectId: string) {
+  return rows.filter((row) => row.projectId === projectId).reduce((sum, row) => sum + row.amountCents, 0);
 }
 
 export function tally(rows: Purchase[], plan: PlanId) {

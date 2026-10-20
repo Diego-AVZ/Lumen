@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { openPaidDraft } from '@/lib/drafts';
+import { saveDraft } from '@/lib/drafts';
 import { haptic } from '@/lib/haptics';
 import { uid } from '@/lib/motion';
-import { euros, familyOf, type PlanFamily, type PlanId } from '@/lib/plans';
-import { freeInFamily, openPlans, usePurchases, type Purchase } from '@/lib/purchases';
 import { exampleDocument } from '@/schema/example';
 import { THEMES, blankDocument } from '@/schema/universe';
 import { HubShell } from '@/hub/HubShell';
 import { TEMPLATES, type TemplateId } from '@/hub/catalog';
-import { PlanGate, planLabel } from '@/hub/PlanShop';
 import { GiftPeek } from '@/hub/GiftPeek';
+import { PriceTag } from '@/hub/PriceTag';
 import { documentFromEasy, EMPTY_EASY, type EasyAnswers } from '@/studio/easyUniverse';
 import { CitaCreate } from '@/pages/CitaCreate';
 
@@ -100,12 +98,8 @@ export function Begin() {
     }
   });
   const [soon, setSoon] = useState<string | null>(null);
-  const [chosen, setChosen] = useState<PlanId | null>(null);
-  const [ask, setAsk] = useState<PlanFamily | null>(null);
   const [error, setError] = useState('');
   const creating = useRef(false);
-  const boot = useRef(false);
-  const { rows: bought } = usePurchases();
 
   useEffect(() => {
     sessionStorage.setItem('lumen.easy', JSON.stringify(answers));
@@ -121,44 +115,15 @@ export function Begin() {
     }
   }, [plantilla, params, setParams]);
 
-  useEffect(() => {
-    if (bought === null || boot.current) return;
-    boot.current = true;
-    if (phase === 'plantilla') return;
-    const family: PlanFamily = phase === 'cita' || plantilla === 'cita' ? 'cita' : 'plantilla';
-    const open = openPlans(bought, family);
-    if (open.length === 0) {
-      setPhase('plantilla');
-      setParams({});
-      setAsk(family);
-      return;
-    }
-    setChosen(open[0]);
-    if (open.length > 1) setAsk(family);
-  }, [bought, phase, plantilla, setParams]);
-
-  const enter = (id: TemplateId, plan: PlanId) => {
-    setChosen(plan);
-    setAsk(null);
-    setError('');
-    haptic('light');
-    setParams({ plantilla: id });
-    setPhase(id === 'cita' ? 'cita' : 'modo');
-  };
-
   const pickTemplate = (id: TemplateId, available: boolean) => {
     if (!available) {
       setSoon(id);
       return;
     }
-    if (bought === null) return;
-    const family: PlanFamily = id === 'cita' ? 'cita' : 'plantilla';
-    const open = openPlans(bought, family);
-    if (open.length === 1) {
-      enter(id, open[0]);
-      return;
-    }
-    setAsk(family);
+    setError('');
+    haptic('light');
+    setParams({ plantilla: id });
+    setPhase(id === 'cita' ? 'cita' : 'modo');
   };
 
   const pickMode = (next: Mode) => {
@@ -170,10 +135,6 @@ export function Begin() {
 
   const startMax = (example: boolean) => {
     if (creating.current) return;
-    if (!chosen) {
-      setAsk('plantilla');
-      return;
-    }
     creating.current = true;
     setError('');
     const doc = example ? exampleDocument() : blankDocument();
@@ -187,7 +148,7 @@ export function Begin() {
       doc.intro.fromName = fromName.trim();
       doc.meta.title = forName.trim() ? `Para ${forName.trim()}` : 'Universo sin nombre';
     }
-    void openPaidDraft(doc, chosen)
+    void saveDraft(doc)
       .then(() => {
         haptic('success');
         navigate(`/crear/${doc.meta.id}`);
@@ -200,15 +161,11 @@ export function Begin() {
 
   const finishEasy = () => {
     if (creating.current) return;
-    if (!chosen) {
-      setAsk('plantilla');
-      return;
-    }
     creating.current = true;
     setError('');
     const doc = documentFromEasy(answers);
     sessionStorage.removeItem('lumen.easy');
-    void openPaidDraft(doc, chosen)
+    void saveDraft(doc)
       .then(() => {
         haptic('success');
         navigate(`/crear/${doc.meta.id}`);
@@ -228,13 +185,20 @@ export function Begin() {
     if (!answers.forName.trim()) return 'Un cielo para alguien.';
     return `Para ${answers.forName.trim()}`;
   }, [answers.forName]);
+  const easyDoc = useMemo(() => documentFromEasy(answers), [answers]);
+  const namedDoc = useMemo(() => {
+    const doc = blankDocument();
+    doc.intro.forName = forName.trim();
+    doc.intro.fromName = fromName.trim();
+    doc.meta.title = forName.trim() ? `Para ${forName.trim()}` : 'Universo sin nombre';
+    return doc;
+  }, [forName, fromName]);
 
   return (
     <HubShell>
       <div className="mx-auto max-w-5xl px-5 py-10 sm:px-8">
         {phase === 'cita' && (
           <CitaCreate
-            plan={chosen}
             onBack={() => {
               setPhase('plantilla');
               setParams({});
@@ -248,9 +212,8 @@ export function Begin() {
               Elige el regalo
             </h1>
             <p className="mt-4 max-w-xl text-[17px] leading-relaxed text-inkwell/60">
-              Sobre o universo. Si no hay un plan libre, te pedimos pagarlo antes de crearlo.
+              Sobre o universo. Crear es gratis. El precio se ve mientras lo haces y se cobra al publicar.
             </p>
-            {bought === null && <p className="mt-6 text-[14px] text-brass">Mirando tus planes…</p>}
             <ul className="mt-10 grid gap-4 md:grid-cols-2">
               {TEMPLATES.map((item) => (
                 <li key={item.id}>
@@ -268,11 +231,6 @@ export function Begin() {
                     <div className="bg-white px-6 py-5">
                       <h2 className="font-display text-4xl italic">{item.name}</h2>
                       <p className="mt-2 text-[15px] leading-relaxed text-inkwell/55">{item.line}</p>
-                      {bought && (item.id === 'cita' || item.id === 'universo') && (
-                        <p className="mt-3 text-[12px] uppercase tracking-[0.14em] text-brass">
-                          {stockLine(bought, item.id === 'cita' ? 'cita' : 'plantilla')}
-                        </p>
-                      )}
                     </div>
                   </button>
                 </li>
@@ -292,7 +250,6 @@ export function Begin() {
               ← Plantillas
             </button>
             <p className="mt-6 text-[12px] uppercase tracking-[0.22em] text-brass">Universo</p>
-            <PlanMark plan={chosen} onChange={() => setAsk('plantilla')} />
             <h1 className="mt-3 max-w-[18ch] font-display text-[clamp(2.6rem,6vw,4.6rem)] italic leading-[0.92]">
               Cómo quieres construirlo
             </h1>
@@ -326,7 +283,6 @@ export function Begin() {
             <button type="button" onClick={() => setPhase('modo')} className="text-[13px] text-inkwell/45">
               ← Modo
             </button>
-            <PlanMark plan={chosen} onChange={() => setAsk('plantilla')} />
             <h1 className="mt-8 font-display text-[clamp(3rem,7vw,4.6rem)] italic leading-[0.95]">¿Para quién es?</h1>
             <p className="mt-4 max-w-md text-[17px] leading-relaxed text-inkwell/60">
               El nombre queda en el centro del cielo. Lo demás se cubre en el estudio, con calma.
@@ -362,6 +318,7 @@ export function Begin() {
               <button type="button" onClick={() => startMax(true)} className="text-[14px] text-brass">
                 Prefiero un ejemplo
               </button>
+              <PriceTag doc={namedDoc} />
             </div>
             {error && <p className="mt-4 text-[15px] text-[#8a3d32]">{error}</p>}
           </div>
@@ -383,7 +340,6 @@ export function Begin() {
                 ))}
               </div>
               <p className="mt-8 text-[12px] uppercase tracking-[0.22em] text-brass">{current.eyebrow}</p>
-              <PlanMark plan={chosen} onChange={() => setAsk('plantilla')} />
               <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.8rem)] italic leading-[0.95]">{current.title}</h1>
               <p className="mt-3 max-w-md text-[16px] leading-relaxed text-inkwell/55">{current.hint}</p>
               <form
@@ -459,6 +415,7 @@ export function Begin() {
                     Crear el universo
                   </button>
                 )}
+                <PriceTag doc={easyDoc} />
               </div>
               {error && <p className="text-[15px] text-[#8a3d32]">{error}</p>}
               </form>
@@ -483,40 +440,8 @@ export function Begin() {
             </aside>
           </div>
         )}
-        {ask && (
-          <PlanGate
-            family={ask}
-            onClose={() => setAsk(null)}
-            onUse={(plan) => {
-              const template: TemplateId = familyOf(plan) === 'cita' ? 'cita' : 'universo';
-              if (phase === 'plantilla') enter(template, plan);
-              else {
-                setChosen(plan);
-                setAsk(null);
-              }
-            }}
-          />
-        )}
       </div>
     </HubShell>
-  );
-}
-
-function stockLine(rows: Purchase[], family: PlanFamily) {
-  const free = freeInFamily(rows, family);
-  if (free > 0) return `${free} ${free === 1 ? 'libre' : 'libres'}`;
-  return `Desde ${family === 'cita' ? euros(295) : euros(1295)}`;
-}
-
-function PlanMark({ plan, onChange }: { plan: PlanId | null; onChange: () => void }) {
-  if (!plan) return null;
-  return (
-    <p className="mt-4 text-[13px] text-brass">
-      Con {planLabel(plan)}
-      <button type="button" onClick={onChange} className="ml-3 underline decoration-brass/40">
-        Cambiar
-      </button>
-    </p>
   );
 }
 

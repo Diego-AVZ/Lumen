@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DateAskPlayer } from '@/cita/DateAskPlayer';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
+import { PriceTag } from '@/hub/PriceTag';
 import { isCita } from '@/schema/project';
 import { loadDraft, peekDraft, purgeProject, saveDraft } from '@/lib/drafts';
 import { uid } from '@/lib/motion';
@@ -70,6 +71,7 @@ export function DateAskStudio({ id }: { id: string }) {
         <button type="button" onClick={() => setRemoving(true)} className="text-[13px] text-[#8a3d32]">
           Eliminar
         </button>
+        <PriceTag doc={doc} />
         <button type="button" onClick={() => setPublishing(true)} className="rounded-full bg-inkwell px-4 py-2 text-[14px] text-linen">
           Enviar
         </button>

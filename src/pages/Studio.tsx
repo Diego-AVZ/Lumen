@@ -17,6 +17,7 @@ import { PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
 import { useDraft } from '@/studio/useDraft';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
+import { PriceTag } from '@/hub/PriceTag';
 import { isCita } from '@/schema/project';
 
 type Mode = 'portada' | 'cielo' | 'dentro';
@@ -275,6 +276,7 @@ function UniverseStudio() {
         <button type="button" onClick={() => setRemoving(true)} className="text-[13px] text-[#8a3d32]">
           Eliminar
         </button>
+        <PriceTag doc={doc} />
         <button type="button" onClick={() => setPublishing(true)} className="rounded-full bg-inkwell px-4 py-2 text-[14px] text-linen">
           Enviar
         </button>

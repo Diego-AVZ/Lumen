@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { saveUniverse } from '@/lib/cloud';
 import { copyText, giftTagOf, makeGiftSlug, shortTag, slugify } from '@/lib/motion';
+import { euros } from '@/lib/plans';
+import { priceOf } from '@/lib/pricing';
+import { claimPurchase, listPurchases, openPlans, paidToward, usePurchases } from '@/lib/purchases';
 import { siteRoot } from '@/lib/site';
 import { hashPhrase } from '@/lib/unlock';
+import { PayModal } from '@/hub/PayModal';
+import { InviteSheet } from '@/studio/InviteSheet';
 import { isCita, type ProjectDocument } from '@/schema/project';
 
 type Health = { urls: string[] };
@@ -31,10 +36,41 @@ export function PublishDialog({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState('');
-  const [qr, setQr] = useState('');
+  const [invite, setInvite] = useState(false);
   const [phrase, setPhrase] = useState('');
   const [clearLock, setClearLock] = useState(false);
+  const [paying, setPaying] = useState(false);
   const hasLock = Boolean(doc.meta.unlockHash);
+  const quote = useMemo(() => priceOf(doc), [doc]);
+  const { rows, refresh } = usePurchases();
+  const paid = paidToward(rows ?? [], doc.meta.id);
+  const due = Math.max(0, quote.totalCents - paid);
+  const attached = useRef(false);
+
+  useEffect(() => {
+    if (attached.current) return;
+    attached.current = true;
+    let cancel = false;
+    void (async () => {
+      let current = await listPurchases();
+      let covered = paidToward(current, doc.meta.id);
+      while (!cancel && covered < quote.totalCents) {
+        const next = openPlans(current, quote.family)[0];
+        if (!next) break;
+        try {
+          await claimPurchase(next, doc.meta.id);
+        } catch {
+          break;
+        }
+        current = await listPurchases();
+        covered = paidToward(current, doc.meta.id);
+      }
+      if (!cancel) await refresh();
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [doc.meta.id, quote.family, quote.totalCents, refresh]);
 
   useEffect(() => {
     if (import.meta.env.PROD) return;
@@ -54,21 +90,10 @@ export function PublishDialog({
   const previewSlug = frozen ? doc.meta.slug : `${slugify(slug)}-${tag}`;
   const liveLink = doc.meta.status === 'published' && doc.meta.slug ? `${phone}/u/${doc.meta.slug}` : '';
   const shareLink = liveLink || draftLink;
-
-  useEffect(() => {
-    let cancel = false;
-    void import('qrcode')
-      .then((QR) => QR.toDataURL(shareLink, { margin: 1, width: 360, color: { dark: '#1b1612', light: '#ffffff' } }))
-      .then((url) => {
-        if (!cancel) setQr(url);
-      })
-      .catch(() => {
-        if (!cancel) setQr('');
-      });
-    return () => {
-      cancel = true;
-    };
-  }, [shareLink]);
+  const publicLink = liveLink || `${phone}/u/${previewSlug}`;
+  const forName = forNameOf(doc).trim();
+  const fromName = (isCita(doc) ? doc.fromName : doc.intro.fromName).trim();
+  const dedication = isCita(doc) ? '' : doc.intro.dedication.trim();
 
   const copy = async (value: string) => {
     await copyText(value);
@@ -114,22 +139,37 @@ export function PublishDialog({
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#1b1612]/40 p-3 sm:place-items-center" onClick={onClose}>
       <div className="max-h-[92dvh] w-full max-w-lg overflow-auto rounded-[28px] bg-linen p-6 shadow-2xl sm:p-8" onClick={(e) => e.stopPropagation()}>
         <p className="text-[11px] uppercase tracking-[0.22em] text-brass">El enlace</p>
         <h2 className="mt-2 font-display text-4xl italic leading-none">Para el móvil</h2>
         <p className="mt-3 text-[15px] leading-relaxed text-inkwell/65">
-          El regalo vive en tu cuenta. Escanea el código: abre el universo, no la portada de Lumen.
+          Crear fue gratis. Publicar cobra {euros(quote.totalCents)}. Si ya pagaste y añadiste algo, solo falta la diferencia.
         </p>
+        <ul className="mt-4 space-y-2 rounded-[22px] bg-white px-4 py-4 ring-1 ring-black/5">
+          {quote.lines.map((line) => (
+            <li key={line.id} className="flex items-baseline justify-between gap-3 text-[14px]">
+              <span>
+                {line.label}
+                <span className="ml-2 text-[12px] text-inkwell/40">{line.note}</span>
+              </span>
+              <span className="tabular-nums">{line.cents ? euros(line.cents) : 'Incluido'}</span>
+            </li>
+          ))}
+          <li className="flex items-baseline justify-between border-t border-black/5 pt-2 font-display text-2xl italic">
+            <span>{due > 0 ? 'Falta' : 'Pagado'}</span>
+            <span>{due > 0 ? euros(due) : euros(quote.totalCents)}</span>
+          </li>
+        </ul>
 
-        {qr && (
-          <div className="mt-5 flex flex-col items-center rounded-2xl bg-white p-4 ring-1 ring-black/10">
-            <img src={qr} alt="" width={180} height={180} className="h-[180px] w-[180px]" />
-            <p className="mt-3 text-center text-[12px] uppercase tracking-[0.16em] text-inkwell/45">
-              {liveLink ? 'El regalo' : 'El borrador, se actualiza solo'}
-            </p>
-          </div>
-        )}
+        <button type="button" onClick={() => setInvite(true)} className="mt-5 w-full rounded-[22px] bg-white px-5 py-4 text-left ring-1 ring-black/10">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-brass">Compartir</span>
+          <span className="mt-1 block font-display text-3xl italic">Diseñar la invitación</span>
+          <span className="mt-1 block text-[14px] leading-relaxed text-inkwell/55">
+            JPG para enseñarlo en el móvil. PDF para enviarlo, con un botón que abre el regalo.
+          </span>
+        </button>
 
         <LinkBlock label={liveLink ? 'Enlace del regalo' : 'Borrador en vivo'} href={shareLink} copied={copied === shareLink} onCopy={() => void copy(shareLink)} />
         {liveLink && <LinkBlock label="Borrador en vivo" href={draftLink} copied={copied === draftLink} onCopy={() => void copy(draftLink)} />}
@@ -178,15 +218,47 @@ export function PublishDialog({
           <button type="button" onClick={onClose} className="text-[14px] text-inkwell/55">
             Cerrar
           </button>
-          <button type="button" disabled={busy} onClick={() => void publish()} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen disabled:opacity-50">
-            {doc.meta.status === 'published' ? 'Actualizar regalo' : 'Publicar regalo'}
-          </button>
+          {due > 0 ? (
+            <button type="button" onClick={() => setPaying(true)} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen">
+              Pagar {euros(due)}
+            </button>
+          ) : (
+            <button type="button" disabled={busy} onClick={() => void publish()} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen disabled:opacity-50">
+              {busy ? 'Publicando…' : doc.meta.status === 'published' ? 'Actualizar regalo' : 'Publicar regalo'}
+            </button>
+          )}
         </div>
         <p className="mt-4 text-[12px] leading-relaxed text-inkwell/40">
           También desde este ordenador: {urls[0]}/u/{frozen ? doc.meta.slug : previewSlug}
         </p>
+        {paying && due > 0 && (
+          <PayModal
+            title={quote.family === 'cita' ? 'Cita' : 'Universo'}
+            cents={due}
+            projectId={doc.meta.id}
+            family={quote.family}
+            onClose={() => setPaying(false)}
+            onPaid={() => {
+              setPaying(false);
+              void refresh();
+            }}
+          />
+        )}
       </div>
     </div>
+      {invite && (
+        <InviteSheet
+          projectId={doc.meta.id}
+          url={publicLink}
+          title={forName ? `Para ${forName}` : 'Para ti'}
+          from={fromName}
+          eyebrow={isCita(doc) ? 'Una cita' : 'Un regalo'}
+          line={dedication || (isCita(doc) ? 'Tengo una pregunta para ti.' : 'Hay un cielo que quiero que abras.')}
+          ready={Boolean(liveLink)}
+          onClose={() => setInvite(false)}
+        />
+      )}
+    </>
   );
 }
 

@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { openPaidDraft } from '@/lib/drafts';
+import { saveDraft } from '@/lib/drafts';
 import { haptic } from '@/lib/haptics';
 import { uid } from '@/lib/motion';
-import { planById, type PlanId } from '@/lib/plans';
+import { PriceTag } from '@/hub/PriceTag';
 import { CITA_PHRASES, blankCita, citaTitle } from '@/schema/cita';
 
-export function CitaCreate({ onBack, plan }: { onBack: () => void; plan: PlanId | null }) {
+export function CitaCreate({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [forName, setForName] = useState('');
@@ -21,27 +21,25 @@ export function CitaCreate({ onBack, plan }: { onBack: () => void; plan: PlanId 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const once = useRef(false);
-  const finish = () => {
-    if (once.current || saving) return;
-    if (!plan) {
-      setError('Elige un plan antes de crear el sobre.');
-      return;
-    }
-    once.current = true;
-    setSaving(true);
-    setError('');
+  const draft = useMemo(() => {
     const doc = blankCita();
     doc.forName = forName.trim();
     doc.fromName = fromName.trim();
     doc.question = question.trim() || CITA_PHRASES[0];
     doc.letter = letter.trim();
     doc.dates = dates.filter((item) => item.label.trim() || item.when);
-    if (doc.dates.length === 0) {
-      doc.dates = [{ id: uid('when'), label: 'Cuando quieras', when: '' }];
-    }
+    if (doc.dates.length === 0) doc.dates = [{ id: uid('when'), label: 'Cuando quieras', when: '' }];
+    return doc;
+  }, [forName, fromName, question, letter, dates]);
+  const finish = () => {
+    if (once.current || saving) return;
+    once.current = true;
+    setSaving(true);
+    setError('');
+    const doc = draft;
     doc.meta.title = citaTitle(doc);
     doc.meta.titleTouched = Boolean(forName.trim());
-    void openPaidDraft(doc, plan)
+    void saveDraft(doc)
       .then(() => {
         haptic('success');
         navigate(`/crear/${doc.meta.id}`);
@@ -58,7 +56,9 @@ export function CitaCreate({ onBack, plan }: { onBack: () => void; plan: PlanId 
       <button type="button" onClick={() => (step === 0 ? onBack() : setStep((n) => n - 1))} className="text-[13px] text-inkwell/45">
         ← {step === 0 ? 'Plantillas' : 'Anterior'}
       </button>
-      {plan && <p className="mt-4 text-[13px] text-brass">Con {planById(plan).name}</p>}
+      <div className="mt-5">
+        <PriceTag doc={draft} />
+      </div>
       <div className="mt-6 flex gap-1.5">
         {[0, 1, 2, 3].map((i) => (
           <span key={i} className={`h-1 flex-1 rounded-full ${i <= step ? 'bg-brass' : 'bg-black/10'}`} />
@@ -153,7 +153,7 @@ export function CitaCreate({ onBack, plan }: { onBack: () => void; plan: PlanId 
             Otra fecha
           </button>
           <div>
-            <button type="button" disabled={saving || !plan} onClick={finish} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-40">
+            <button type="button" disabled={saving} onClick={finish} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-40">
               {saving ? 'Creando…' : 'Crear el sobre'}
             </button>
             {error && <p className="mt-4 text-[15px] text-[#8a3d32]">{error}</p>}
