@@ -2,7 +2,7 @@ export const CARD_W = 1080;
 export const CARD_H = 1520;
 
 export type Fade = 'suave' | 'diagonal' | 'centro';
-export type Motif = 'flores' | 'ositos' | 'globos' | 'estrellas' | 'corazones' | 'mix';
+export type Motif = 'flores' | 'ositos' | 'globos' | 'estrellas' | 'corazones' | 'mix' | 'none';
 
 export type Paper = {
   id: string;
@@ -31,6 +31,7 @@ export const FADES: { id: Fade; label: string }[] = [
 ];
 
 export const MOTIFS: { id: Motif; label: string }[] = [
+  { id: 'none', label: 'Sin motivos' },
   { id: 'mix', label: 'Un poco de todo' },
   { id: 'flores', label: 'Flores' },
   { id: 'ositos', label: 'Ositos' },
@@ -217,10 +218,10 @@ function drawMotif(ctx: CanvasRenderingContext2D, kind: Exclude<Motif, 'mix'>, x
   ctx.restore();
 }
 
-function spotsFor(motif: Motif, rand: Rand) {
+function spotsFor(motif: Exclude<Motif, 'none'>, rand: Rand) {
   const count = motif === 'ositos' ? 7 : motif === 'globos' ? 6 : motif === 'estrellas' ? 16 : motif === 'mix' ? 12 : 11;
-  const points: { x: number; y: number; s: number; kind: Exclude<Motif, 'mix'> }[] = [];
-  const kinds: Exclude<Motif, 'mix'>[] = ['flores', 'ositos', 'globos', 'corazones', 'estrellas'];
+  const points: { x: number; y: number; s: number; kind: Exclude<Motif, 'mix' | 'none'> }[] = [];
+  const kinds: Exclude<Motif, 'mix' | 'none'>[] = ['flores', 'ositos', 'globos', 'corazones', 'estrellas'];
   for (let i = 0; i < count; i += 1) {
     const edge = i % 4;
     const along = (i + 0.5) / count;
@@ -293,11 +294,13 @@ export function drawInvite(ctx: CanvasRenderingContext2D, paint: InvitePaint): {
     ctx.fillRect(rand() * CARD_W, rand() * CARD_H, 1.6, 1.6);
   }
 
-  for (const spot of spotsFor(paint.motif, rand)) {
-    ctx.save();
-    ctx.globalAlpha = paper.id === 'noche' ? 0.9 : 0.82;
-    drawMotif(ctx, spot.kind, spot.x, spot.y, spot.s, paper, rand);
-    ctx.restore();
+  if (paint.motif !== 'none') {
+    for (const spot of spotsFor(paint.motif, rand)) {
+      ctx.save();
+      ctx.globalAlpha = paper.id === 'noche' ? 0.9 : 0.82;
+      drawMotif(ctx, spot.kind, spot.x, spot.y, spot.s, paper, rand);
+      ctx.restore();
+    }
   }
 
   const veil = ctx.createRadialGradient(CARD_W / 2, CARD_H * 0.5, 80, CARD_W / 2, CARD_H * 0.52, 560);

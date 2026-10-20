@@ -90,7 +90,7 @@ export function InviteSheet({
       await loadInviteFonts();
       const qr = document.createElement('canvas');
       try {
-        await QRCode.toCanvas(qr, url, { margin: 1, width: 280, color: { dark: paper.ink, light: '#ffffff' } });
+        await QRCode.toCanvas(qr, url, { margin: 1, width: 280, color: { dark: '#1b1612', light: '#ffffff' } });
       } catch {
         /* la tarjeta sigue sin el código */
       }
@@ -125,7 +125,7 @@ export function InviteSheet({
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('No pude dibujar la invitación.');
     const qr = document.createElement('canvas');
-    await QRCode.toCanvas(qr, url, { margin: 1, width: 280, color: { dark: paper.ink, light: '#ffffff' } });
+    await QRCode.toCanvas(qr, url, { margin: 1, width: 280, color: { dark: '#1b1612', light: '#ffffff' } });
     const boxes = drawInvite(ctx, {
       paper,
       fade: design.fade,
@@ -323,9 +323,11 @@ export function InviteSheet({
                   {item.label}
                 </button>
               ))}
-              <button type="button" onClick={() => patch({ seed: design.seed + 1 })} className="rounded-full px-3 py-1.5 text-[13px] text-brass">
-                Moverlos
-              </button>
+              {design.motif !== 'none' && (
+                <button type="button" onClick={() => patch({ seed: design.seed + 1 })} className="rounded-full px-3 py-1.5 text-[13px] text-brass">
+                  Moverlos
+                </button>
+              )}
             </div>
 
             <label className="mt-7 block">

@@ -143,23 +143,13 @@ export function PublishDialog({
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#1b1612]/40 p-3 sm:place-items-center" onClick={onClose}>
       <div className="max-h-[92dvh] w-full max-w-lg overflow-auto rounded-[28px] bg-linen p-6 shadow-2xl sm:p-8" onClick={(e) => e.stopPropagation()}>
         <p className="text-[11px] uppercase tracking-[0.22em] text-brass">Enviar</p>
-        <h2 className="mt-2 font-display text-4xl italic leading-none">El enlace y la invitación</h2>
+        <h2 className="mt-2 font-display text-4xl italic leading-none">
+          {due > 0 ? 'Pagar y publicar' : doc.meta.status === 'published' ? 'Actualizar' : 'Publicar'}
+        </h2>
         <p className="mt-3 text-[15px] leading-relaxed text-inkwell/65">
-          Publica el {isCita(doc) ? 'sobre' : 'regalo'} y baja un JPG o un PDF para mandarlo. El botón de la invitación abre este enlace.
+          El precio lo has ido viendo al crearlo. Pagar lo publica. Si luego lo cambias y sigues dentro de lo pagado, actualizar no cobra.
         </p>
-
-        <button type="button" onClick={() => setInvite(true)} className="mt-5 w-full rounded-[22px] bg-inkwell px-5 py-5 text-left text-linen">
-          <span className="text-[11px] uppercase tracking-[0.16em] text-[#e8b86d]">JPG y PDF</span>
-          <span className="mt-1 block font-display text-3xl italic">Diseñar la invitación</span>
-          <span className="mt-1 block text-[14px] leading-relaxed text-linen/65">
-            Una tarjeta para enseñarla en el móvil o enviarla. El botón Ábrelo lleva al {isCita(doc) ? 'sobre' : 'universo'}.
-          </span>
-        </button>
-
-        <p className="mt-6 text-[13px] text-inkwell/50">
-          Crear fue gratis. Publicar cobra {euros(quote.totalCents)}. Si ya pagaste, solo falta la diferencia.
-        </p>
-        <ul className="mt-3 space-y-2 rounded-[22px] bg-white px-4 py-4 ring-1 ring-black/5">
+        <ul className="mt-4 space-y-2 rounded-[22px] bg-white px-4 py-4 ring-1 ring-black/5">
           {quote.lines.map((line) => (
             <li key={line.id} className="flex items-baseline justify-between gap-3 text-[14px]">
               <span>
@@ -169,11 +159,30 @@ export function PublishDialog({
               <span className="tabular-nums">{line.cents ? euros(line.cents) : 'Incluido'}</span>
             </li>
           ))}
-          <li className="flex items-baseline justify-between border-t border-black/5 pt-2 font-display text-2xl italic">
-            <span>{due > 0 ? 'Falta' : 'Pagado'}</span>
-            <span>{due > 0 ? euros(due) : euros(quote.totalCents)}</span>
+          <li className="flex flex-wrap items-center justify-between gap-3 border-t border-black/5 pt-3">
+            <span>
+              <span className="block font-display text-2xl italic">{due > 0 ? 'Falta' : 'Dentro de lo pagado'}</span>
+              <span className="font-display text-3xl italic">{due > 0 ? euros(due) : euros(quote.totalCents)}</span>
+            </span>
+            {due > 0 ? (
+              <button type="button" onClick={() => setPaying(true)} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen">
+                Pagar y publicar
+              </button>
+            ) : (
+              <button type="button" disabled={busy} onClick={() => void publish()} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen disabled:opacity-50">
+                {busy ? 'Publicando…' : doc.meta.status === 'published' ? 'Actualizar' : 'Publicar'}
+              </button>
+            )}
           </li>
         </ul>
+
+        <button type="button" onClick={() => setInvite(true)} className="mt-4 w-full rounded-[22px] bg-white px-5 py-4 text-left ring-1 ring-black/10">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-brass">Sin pagar</span>
+          <span className="mt-1 block font-display text-3xl italic">Diseñar la invitación</span>
+          <span className="mt-1 block text-[14px] leading-relaxed text-inkwell/55">
+            JPG para el móvil y PDF para enviarlo. El botón abre el {isCita(doc) ? 'sobre' : 'universo'}.
+          </span>
+        </button>
 
         <LinkBlock label={liveLink ? 'Enlace del regalo' : 'Borrador en vivo'} href={shareLink} copied={copied === shareLink} onCopy={() => void copy(shareLink)} />
         {liveLink && <LinkBlock label="Borrador en vivo" href={draftLink} copied={copied === draftLink} onCopy={() => void copy(draftLink)} />}
@@ -218,19 +227,10 @@ export function PublishDialog({
 
         {error && <p className="mt-4 text-[14px] text-[#8a3d32]">{error}</p>}
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-6">
           <button type="button" onClick={onClose} className="text-[14px] text-inkwell/55">
             Cerrar
           </button>
-          {due > 0 ? (
-            <button type="button" onClick={() => setPaying(true)} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen">
-              Pagar {euros(due)}
-            </button>
-          ) : (
-            <button type="button" disabled={busy} onClick={() => void publish()} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen disabled:opacity-50">
-              {busy ? 'Publicando…' : doc.meta.status === 'published' ? 'Actualizar regalo' : 'Publicar regalo'}
-            </button>
-          )}
         </div>
         <p className="mt-4 text-[12px] leading-relaxed text-inkwell/40">
           También desde este ordenador: {urls[0]}/u/{frozen ? doc.meta.slug : previewSlug}
@@ -244,7 +244,7 @@ export function PublishDialog({
             onClose={() => setPaying(false)}
             onPaid={() => {
               setPaying(false);
-              void refresh();
+              void refresh().then(() => publish());
             }}
           />
         )}
