@@ -69,28 +69,28 @@ function str(value: unknown, fallback = '') {
 export function parseCita(input: unknown): DateAskDocument {
   if (!input || typeof input !== 'object') throw new Error('Eso no es una cita.');
   const raw = input as Partial<DateAskDocument>;
-  const base = blankCita();
-  const meta = { ...base.meta, ...(raw.meta ?? {}) };
+  const meta = (raw.meta ?? {}) as Partial<Meta>;
+  const stamp = nowIso();
+  const dates = Array.isArray(raw.dates) && raw.dates.length ? raw.dates : [{ id: 'when_1', label: 'Cuando quieras', when: '' }];
   return {
     schemaVersion: 1,
     kind: 'cita',
     meta: {
-      ...meta,
-      id: str(meta.id, base.meta.id),
-      title: str(meta.title, base.meta.title),
+      id: str(meta.id) || uid('cita'),
+      title: str(meta.title, 'Pedir cita'),
       titleTouched: Boolean(meta.titleTouched),
       slug: str(meta.slug),
       status: meta.status === 'published' ? 'published' : 'draft',
-      createdAt: str(meta.createdAt, base.meta.createdAt),
-      updatedAt: str(meta.updatedAt, base.meta.updatedAt),
+      createdAt: str(meta.createdAt, stamp),
+      updatedAt: str(meta.updatedAt, stamp),
       unlockHash: str(meta.unlockHash) || undefined,
     },
     forName: str(raw.forName),
     fromName: str(raw.fromName),
     question: str(raw.question, CITA_PHRASES[0]),
-    letter: str(raw.letter, base.letter),
-    dates: (Array.isArray(raw.dates) ? raw.dates : base.dates).map((item) => ({
-      id: str(item?.id, uid('when')),
+    letter: str(raw.letter, 'No hace falta que sea perfecto. Solo quiero verte.'),
+    dates: dates.map((item) => ({
+      id: str(item?.id) || uid('when'),
       label: str(item?.label),
       when: str(item?.when),
     })),

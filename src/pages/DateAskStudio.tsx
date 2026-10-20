@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DateAskPlayer } from '@/cita/DateAskPlayer';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
@@ -20,8 +20,16 @@ export function DateAskStudio({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
 
+  const ready = useRef(false);
+  useEffect(() => {
+    ready.current = false;
+  }, [id]);
   useEffect(() => {
     if (!doc) return;
+    if (!ready.current) {
+      ready.current = true;
+      return;
+    }
     const handle = window.setTimeout(() => {
       const next = { ...doc, meta: { ...doc.meta, title: citaTitle(doc), updatedAt: new Date().toISOString() } };
       void saveDraft(next).catch(() => undefined);
@@ -163,7 +171,7 @@ export function DateAskStudio({ id }: { id: string }) {
             const parsed = parseCita(next);
             setDoc(parsed);
             saveDraft(parsed);
-            setPublishing(true);
+            setPublishing(false);
           }}
         />
       )}

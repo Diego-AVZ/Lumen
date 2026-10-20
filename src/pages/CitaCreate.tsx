@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { saveDraft } from '@/lib/drafts';
 import { haptic } from '@/lib/haptics';
@@ -17,7 +17,12 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
     { id: uid('when'), label: 'Sábado a media tarde', when: '' },
   ]);
 
+  const [saving, setSaving] = useState(false);
+  const once = useRef(false);
   const finish = () => {
+    if (once.current || saving) return;
+    once.current = true;
+    setSaving(true);
     const doc = blankCita();
     doc.forName = forName.trim();
     doc.fromName = fromName.trim();
@@ -29,10 +34,15 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
     }
     doc.meta.title = citaTitle(doc);
     doc.meta.titleTouched = Boolean(forName.trim());
-    void saveDraft(doc).then(() => {
-      haptic('success');
-      navigate(`/crear/${doc.meta.id}`);
-    });
+    void saveDraft(doc)
+      .then(() => {
+        haptic('success');
+        navigate(`/crear/${doc.meta.id}`);
+      })
+      .catch(() => {
+        once.current = false;
+        setSaving(false);
+      });
   };
 
   return (
@@ -134,8 +144,8 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
             Otra fecha
           </button>
           <div>
-            <button type="button" onClick={finish} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen">
-              Crear el sobre
+            <button type="button" disabled={saving} onClick={finish} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-40">
+              {saving ? 'Creando…' : 'Crear el sobre'}
             </button>
           </div>
         </>

@@ -393,7 +393,7 @@ export function parseDocument(input: unknown): UniverseDocument {
   if (!Array.isArray(raw.stars)) throw new Error('A este archivo le faltan las estrellas.');
   const base = blankDocument();
   const meta = { ...base.meta, ...(raw.meta ?? {}) };
-  if (!meta.id) meta.id = base.meta.id;
+  meta.id = str(meta.id) || uid('uni');
   const stars = raw.stars
     .map((star, i) => normalizeStar(star, i))
     .filter((star): star is Star => Boolean(star))

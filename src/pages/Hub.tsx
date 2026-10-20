@@ -82,11 +82,15 @@ function ProjectsPanel() {
               type="button"
               className="rounded-full px-5 py-3 text-linen ring-1 ring-white/15"
               onClick={() => {
+                if (busy) return;
+                setBusy(true);
                 const sample = exampleDocument();
                 sample.meta.id = uid('uni');
                 sample.meta.status = 'draft';
                 sample.meta.slug = '';
-                void saveDraft(sample).then(() => navigate(`/crear/${sample.meta.id}`));
+                void saveDraft(sample)
+                  .then(() => navigate(`/crear/${sample.meta.id}`))
+                  .catch(() => setBusy(false));
               }}
             >
               Usar el ejemplo

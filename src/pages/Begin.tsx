@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { saveDraft } from '@/lib/drafts';
 import { haptic } from '@/lib/haptics';
@@ -96,6 +96,7 @@ export function Begin() {
     }
   });
   const [soon, setSoon] = useState<string | null>(null);
+  const creating = useRef(false);
 
   useEffect(() => {
     sessionStorage.setItem('lumen.easy', JSON.stringify(answers));
@@ -129,6 +130,8 @@ export function Begin() {
   };
 
   const startMax = (example: boolean) => {
+    if (creating.current) return;
+    creating.current = true;
     const doc = example ? exampleDocument() : blankDocument();
     if (example) {
       doc.meta.id = uid('uni');
@@ -140,19 +143,29 @@ export function Begin() {
       doc.intro.fromName = fromName.trim();
       doc.meta.title = forName.trim() ? `Para ${forName.trim()}` : 'Universo sin nombre';
     }
-    void saveDraft(doc).then(() => {
-      haptic('success');
-      navigate(`/crear/${doc.meta.id}`);
-    });
+    void saveDraft(doc)
+      .then(() => {
+        haptic('success');
+        navigate(`/crear/${doc.meta.id}`);
+      })
+      .catch(() => {
+        creating.current = false;
+      });
   };
 
   const finishEasy = () => {
+    if (creating.current) return;
+    creating.current = true;
     const doc = documentFromEasy(answers);
     sessionStorage.removeItem('lumen.easy');
-    void saveDraft(doc).then(() => {
-      haptic('success');
-      navigate(`/crear/${doc.meta.id}`);
-    });
+    void saveDraft(doc)
+      .then(() => {
+        haptic('success');
+        navigate(`/crear/${doc.meta.id}`);
+      })
+      .catch(() => {
+        creating.current = false;
+      });
   };
 
   const current = WIZARD[step];

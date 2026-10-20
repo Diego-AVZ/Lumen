@@ -49,16 +49,19 @@ export function useDraft(id: string) {
 
   useEffect(() => {
     if (!doc) return;
-    if (lastSaved.current) setStatus('saving');
+    if (lastSaved.current === doc) return;
+    if (!lastSaved.current) {
+      lastSaved.current = doc;
+      return;
+    }
+    setStatus('saving');
     const handle = window.setTimeout(() => {
-      if (!lastSaved.current) {
-        lastSaved.current = doc;
-      } else if (lastSaved.current !== doc) {
+      if (lastSaved.current && lastSaved.current !== doc) {
         history.current.push(lastSaved.current);
         if (history.current.length > 60) history.current.shift();
         future.current = [];
-        lastSaved.current = doc;
       }
+      lastSaved.current = doc;
       void saveDraft(doc)
         .then(() => setStatus('saved'))
         .catch(() => setStatus('saving'));

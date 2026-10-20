@@ -81,9 +81,27 @@ async function ensureProfile(user: User) {
   if (error) throw cloudError(error);
 }
 
+const inflight = new Map<string, Promise<void>>();
+
 export async function saveUniverse(doc: ProjectDocument) {
+  const id = doc.meta.id;
+  if (!id) throw new Error('El proyecto no tiene identificador.');
+  const queued = (inflight.get(id) ?? Promise.resolve()).then(
+    () => persistUniverse(doc),
+    () => persistUniverse(doc),
+  );
+  inflight.set(id, queued);
+  try {
+    await queued;
+  } finally {
+    if (inflight.get(id) === queued) inflight.delete(id);
+  }
+}
+
+async function persistUniverse(doc: ProjectDocument) {
   const user = await currentUser();
-  if (!supabase) throw new Error('Supabase no está configurado.');
+  const db = supabase;
+  if (!db) throw new Error('Supabase no está configurado.');
   if (!user) throw new Error('Entra en la cuenta para guardar.');
   await ensureProfile(user);
   const row = {
@@ -97,14 +115,26 @@ export async function saveUniverse(doc: ProjectDocument) {
     published_at: doc.meta.publishedAt ?? null,
     unlock_hash: doc.meta.unlockHash || null,
   };
-  const { error } = await supabase.from('universes').upsert(row, { onConflict: 'local_id' });
-  if (error && /unlock_hash/.test(error.message)) {
+  const write = async (body: typeof row | Omit<typeof row, 'unlock_hash'>) => {
+    const found = await db
+      .from('universes')
+      .select('id')
+      .eq('local_id', doc.meta.id)
+      .eq('owner_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (found.data?.id) {
+      return db.from('universes').update(body).eq('id', found.data.id).eq('owner_id', user.id);
+    }
+    return db.from('universes').insert(body);
+  };
+  let result = await write(row);
+  if (result.error && /unlock_hash/.test(result.error.message)) {
     const { unlock_hash: _hash, ...legacy } = row;
-    const retry = await supabase.from('universes').upsert(legacy, { onConflict: 'local_id' });
-    if (retry.error) throw cloudError(retry.error);
-    return;
+    result = await write(legacy);
   }
-  if (error) throw cloudError(error);
+  if (result.error) throw cloudError(result.error);
 }
 
 export async function loadPublished(slug: string): Promise<ProjectDocument | null> {
@@ -163,13 +193,30 @@ function kindOfId(id: string): 'universo' | 'cita' {
 }
 
 export async function listMine(): Promise<CloudUniverse[]> {
-  if (!supabase) return [];
+  const user = await currentUser();
+  if (!supabase || !user) return [];
   const { data, error } = await supabase
     .from('universes')
-    .select('local_id, title, slug, status, updated_at')
+    .select('id, local_id, title, slug, status, updated_at')
+    .eq('owner_id', user.id)
     .order('updated_at', { ascending: false });
   if (error || !data) return [];
-  return data.map((row) => {
+  const keep: typeof data = [];
+  const extra: string[] = [];
+  const seen = new Set<string>();
+  for (const row of data) {
+    const local = String(row.local_id || '');
+    if (!local || seen.has(local)) {
+      extra.push(String(row.id));
+      continue;
+    }
+    seen.add(local);
+    keep.push(row);
+  }
+  if (extra.length) {
+    void supabase.from('universes').delete().in('id', extra).eq('owner_id', user.id);
+  }
+  return keep.map((row) => {
     const id = String(row.local_id);
     return {
       id,
@@ -183,10 +230,18 @@ export async function listMine(): Promise<CloudUniverse[]> {
 }
 
 export async function loadOwned(localId: string): Promise<ProjectDocument | null> {
-  if (!supabase) return null;
-  const full = await supabase.from('universes').select('document, unlock_hash').eq('local_id', localId).maybeSingle();
+  const user = await currentUser();
+  if (!supabase || !user || !localId) return null;
+  const full = await supabase
+    .from('universes')
+    .select('document, unlock_hash')
+    .eq('local_id', localId)
+    .eq('owner_id', user.id)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
   const row = full.error && /unlock_hash/.test(full.error.message)
-    ? await supabase.from('universes').select('document').eq('local_id', localId).maybeSingle()
+    ? await supabase.from('universes').select('document').eq('local_id', localId).eq('owner_id', user.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
     : full;
   if (row.error || !row.data?.document) return null;
   try {
