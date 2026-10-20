@@ -12,9 +12,6 @@ function githubPagesSpa() {
       const dist = path.resolve('dist');
       const index = path.join(dist, 'index.html');
       if (!fs.existsSync(index)) return;
-      fs.mkdirSync(path.join(dist, 'crear', 'nuevo'), { recursive: true });
-      fs.copyFileSync(index, path.join(dist, 'crear', 'index.html'));
-      fs.copyFileSync(index, path.join(dist, 'crear', 'nuevo', 'index.html'));
       const base = (process.env.VITE_BASE || '/').replace(/\/?$/, '/');
       fs.writeFileSync(
         path.join(dist, '404.html'),

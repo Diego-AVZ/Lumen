@@ -29,6 +29,11 @@ export function HubShell({ children }: { children: ReactNode }) {
     setOpen(false);
   }, [location.pathname, location.search]);
 
+  useEffect(() => {
+    document.body.style.background = '';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#f3eee6');
+  }, []);
+
   const go = (id: HubVista) => {
     if (id === 'crear') navigate('/crear/nuevo');
     else navigate(id === 'proyectos' ? '/crear' : `/crear?vista=${id}`);

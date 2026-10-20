@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom';
+import { Component, lazy, Suspense, type ReactNode } from 'react';
+import { BrowserRouter, Outlet, Route, Routes, useParams } from 'react-router-dom';
 import { RequireAccount } from '@/hub/RequireAccount';
 import { Gift } from '@/pages/Gift';
 import { SessionProvider } from '@/lib/session';
@@ -18,7 +18,7 @@ function ProjectStudio() {
   return <Studio />;
 }
 
-function Boot() {
+function DarkBoot() {
   return (
     <div className="grid h-dvh place-items-center bg-[#0c0b0a]">
       <span className="h-2 w-2 rounded-full bg-[#e8b86d]" />
@@ -26,21 +26,81 @@ function Boot() {
   );
 }
 
+function LinenBoot() {
+  return (
+    <div className="grid h-dvh place-items-center bg-linen">
+      <span className="h-2 w-2 rounded-full bg-brass" />
+    </div>
+  );
+}
+
+class LoadError extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="grid h-dvh place-items-center bg-linen px-6 text-center text-inkwell">
+          <div>
+            <p className="font-display text-4xl italic">La página no terminó de abrir.</p>
+            <button type="button" onClick={() => window.location.reload()} className="mt-6 rounded-full bg-inkwell px-5 py-3 text-linen">
+              Recargar
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function Workshop() {
+  return (
+    <RequireAccount>
+      <LoadError>
+        <Suspense fallback={<LinenBoot />}>
+          <Outlet />
+        </Suspense>
+      </LoadError>
+    </RequireAccount>
+  );
+}
+
 export default function App() {
   return (
     <SessionProvider>
       <BrowserRouter basename={siteBase() || undefined}>
-        <Suspense fallback={<Boot />}>
+        <LoadError>
           <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/crear" element={<RequireAccount><Hub /></RequireAccount>} />
-            <Route path="/crear/nuevo" element={<RequireAccount><Begin /></RequireAccount>} />
-            <Route path="/crear/:id" element={<RequireAccount><ProjectStudio /></RequireAccount>} />
+            <Route
+              path="/"
+              element={
+                <Suspense fallback={<DarkBoot />}>
+                  <Landing />
+                </Suspense>
+              }
+            />
+            <Route element={<Workshop />}>
+              <Route path="/crear" element={<Hub />} />
+              <Route path="/crear/nuevo" element={<Begin />} />
+              <Route path="/crear/:id" element={<ProjectStudio />} />
+            </Route>
             <Route path="/u/:slug" element={<Gift kind="published" />} />
             <Route path="/p/:id" element={<Gift kind="draft" />} />
-            <Route path="*" element={<Missing />} />
+            <Route
+              path="*"
+              element={
+                <Suspense fallback={<DarkBoot />}>
+                  <Missing />
+                </Suspense>
+              }
+            />
           </Routes>
-        </Suspense>
+        </LoadError>
       </BrowserRouter>
     </SessionProvider>
   );

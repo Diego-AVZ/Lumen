@@ -16,6 +16,12 @@ export function Hub() {
   const raw = params.get('vista');
   const vista: HubVista = HUB_VISTAS.some((item) => item.id === raw) ? (raw as HubVista) : 'proyectos';
 
+  useEffect(() => {
+    void import('@/pages/Begin');
+    void import('@/pages/Studio');
+    void import('@/pages/DateAskStudio');
+  }, []);
+
   return (
     <HubShell>
       {vista === 'proyectos' && <ProjectsPanel />}

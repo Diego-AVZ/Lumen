@@ -139,6 +139,10 @@ function HeroTour({ doc }: { doc: UniverseDocument }) {
 }
 
 export function Landing() {
+  useEffect(() => {
+    void import('@/pages/Hub');
+    void import('@/pages/Begin');
+  }, []);
   const scenes = useMemo(() => {
     const base = exampleDocument();
     const byType = (type: Star['type']) => base.stars.find((star) => star.type === type);
