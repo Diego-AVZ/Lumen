@@ -13,7 +13,7 @@ export async function currentUser(): Promise<User | null> {
 }
 
 export function accountReturnTo() {
-  return `${siteRoot()}/crear?vista=plan`;
+  return `${siteRoot()}/crear`;
 }
 
 export function gmailInbox(email: string) {
@@ -45,6 +45,7 @@ export async function signInWithGoogle() {
     options: {
       redirectTo: accountReturnTo(),
       skipBrowserRedirect: true,
+      scopes: 'openid email profile',
       queryParams: { access_type: 'offline', prompt: 'select_account' },
     },
   });
@@ -65,6 +66,17 @@ async function googleProviderEnabled() {
   } catch {
     return false;
   }
+}
+
+export async function linkGoogle() {
+  if (!supabase) throw new Error('Supabase no está configurado.');
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider: 'google',
+    options: { redirectTo: accountReturnTo(), scopes: 'openid email profile' },
+  });
+  if (error) throw cloudError(error);
+  if (!data.url) throw new Error('Google no devolvió la dirección de entrada.');
+  window.location.assign(data.url);
 }
 
 export async function signOut() {

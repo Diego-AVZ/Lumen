@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { gmailInbox, listMine, sendMagicLink, signInWithGoogle, signOut, type CloudUniverse } from '@/lib/cloud';
+import { gmailInbox, linkGoogle, listMine, sendMagicLink, signInWithGoogle, signOut, type CloudUniverse } from '@/lib/cloud';
 import { purgeProject } from '@/lib/drafts';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
 import { WaitMark } from '@/hub/WaitMark';
@@ -119,7 +119,7 @@ export function AccountBar({
             Enlace enviado. Te llevamos a Gmail; ábrelo y vuelves aquí ya dentro.
           </p>
         )}
-        {error && <p className="mt-3 text-[14px] text-inkwell/70">{error}</p>}
+        {error && <p className="mt-3 text-[14px] leading-relaxed text-[#8a3d32]">{error}</p>}
       </section>
     );
   }
@@ -137,14 +137,33 @@ export function AccountBar({
             {viaGoogle ? ' · Google' : ''}
           </p>
         </div>
-        <button
-          type="button"
-          disabled={busy === 'out'}
-          onClick={() => void leave()}
-          className="rounded-full px-5 py-2.5 text-[14px] ring-1 ring-black/10 hover:bg-linen"
-        >
-          {busy === 'out' ? 'Saliendo…' : 'Cerrar sesión'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {!viaGoogle && (
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => {
+                setBusy('google');
+                setError('');
+                void linkGoogle().catch((err: unknown) => {
+                  setBusy(null);
+                  setError(err instanceof Error ? err.message : 'No se pudo conectar Google.');
+                });
+              }}
+              className="rounded-full bg-inkwell px-5 py-2.5 text-[14px] text-linen disabled:opacity-40"
+            >
+              {busy === 'google' ? 'Abriendo Google…' : 'Conectar Google'}
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={busy === 'out'}
+            onClick={() => void leave()}
+            className="rounded-full px-5 py-2.5 text-[14px] ring-1 ring-black/10 hover:bg-linen"
+          >
+            {busy === 'out' ? 'Saliendo…' : 'Cerrar sesión'}
+          </button>
+        </div>
       </div>
       {mine === null ? (
         <WaitMark line="Trayendo tus proyectos" tone="inline" />
