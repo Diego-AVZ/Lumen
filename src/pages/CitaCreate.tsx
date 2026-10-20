@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { saveDraft } from '@/lib/drafts';
+import { openPaidDraft } from '@/lib/drafts';
 import { haptic } from '@/lib/haptics';
 import { uid } from '@/lib/motion';
+import { planById, type PlanId } from '@/lib/plans';
 import { CITA_PHRASES, blankCita, citaTitle } from '@/schema/cita';
 
-export function CitaCreate({ onBack }: { onBack: () => void }) {
+export function CitaCreate({ onBack, plan }: { onBack: () => void; plan: PlanId | null }) {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [forName, setForName] = useState('');
@@ -18,11 +19,17 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
   ]);
 
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const once = useRef(false);
   const finish = () => {
     if (once.current || saving) return;
+    if (!plan) {
+      setError('Elige un plan antes de crear el sobre.');
+      return;
+    }
     once.current = true;
     setSaving(true);
+    setError('');
     const doc = blankCita();
     doc.forName = forName.trim();
     doc.fromName = fromName.trim();
@@ -34,14 +41,15 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
     }
     doc.meta.title = citaTitle(doc);
     doc.meta.titleTouched = Boolean(forName.trim());
-    void saveDraft(doc)
+    void openPaidDraft(doc, plan)
       .then(() => {
         haptic('success');
         navigate(`/crear/${doc.meta.id}`);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         once.current = false;
         setSaving(false);
+        setError(err instanceof Error ? err.message : 'No se pudo crear el sobre.');
       });
   };
 
@@ -50,6 +58,7 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
       <button type="button" onClick={() => (step === 0 ? onBack() : setStep((n) => n - 1))} className="text-[13px] text-inkwell/45">
         ← {step === 0 ? 'Plantillas' : 'Anterior'}
       </button>
+      {plan && <p className="mt-4 text-[13px] text-brass">Con {planById(plan).name}</p>}
       <div className="mt-6 flex gap-1.5">
         {[0, 1, 2, 3].map((i) => (
           <span key={i} className={`h-1 flex-1 rounded-full ${i <= step ? 'bg-brass' : 'bg-black/10'}`} />
@@ -144,9 +153,10 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
             Otra fecha
           </button>
           <div>
-            <button type="button" disabled={saving} onClick={finish} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-40">
+            <button type="button" disabled={saving || !plan} onClick={finish} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-40">
               {saving ? 'Creando…' : 'Crear el sobre'}
             </button>
+            {error && <p className="mt-4 text-[15px] text-[#8a3d32]">{error}</p>}
           </div>
         </>
       )}

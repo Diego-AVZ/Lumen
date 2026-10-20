@@ -1,4 +1,5 @@
 import { clamp, shade, uid } from '@/lib/motion';
+import { isPlanId, type PlanId } from '@/lib/plans';
 
 /**
  * Contrato del universo.
@@ -50,6 +51,8 @@ export type Meta = {
   updatedAt: string;
   publishedAt?: string;
   unlockHash?: string;
+  plan?: PlanId;
+  purchaseId?: string;
 };
 
 export type StorySlide = {
@@ -409,6 +412,8 @@ export function parseDocument(input: unknown): UniverseDocument {
       createdAt: str(meta.createdAt, base.meta.createdAt),
       updatedAt: str(meta.updatedAt, base.meta.updatedAt),
       unlockHash: str(meta.unlockHash) || undefined,
+      plan: isPlanId(meta.plan) ? meta.plan : undefined,
+      purchaseId: str(meta.purchaseId) || undefined,
     },
     theme: normalizeTheme(raw.theme),
     gate: {

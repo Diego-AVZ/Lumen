@@ -1,4 +1,5 @@
 import { uid } from '@/lib/motion';
+import { isPlanId } from '@/lib/plans';
 import type { Meta } from '@/schema/universe';
 
 export const CITA_PHRASES = [
@@ -84,6 +85,8 @@ export function parseCita(input: unknown): DateAskDocument {
       createdAt: str(meta.createdAt, stamp),
       updatedAt: str(meta.updatedAt, stamp),
       unlockHash: str(meta.unlockHash) || undefined,
+      plan: isPlanId(meta.plan) ? meta.plan : undefined,
+      purchaseId: str(meta.purchaseId) || undefined,
     },
     forName: str(raw.forName),
     fromName: str(raw.fromName),

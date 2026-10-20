@@ -325,3 +325,168 @@ $$;
 
 grant execute on function public.ping_gift(text, text, text, text, text) to anon, authenticated;
 grant execute on function public.my_gift_stats() to authenticated, anon;
+
+-- Compras. Un pago abre un proyecto.
+-- Hoy mock_checkout lo inserta el propio usuario: no cobra.
+-- Cuando entren Stripe y el contrato, se apaga este RPC y el alta la hace el servidor.
+create table if not exists public.purchases (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references public.profiles (id) on delete cascade,
+  plan text not null check (plan in ('cita', 'cita_pro', 'plantilla', 'plantilla_pro')),
+  amount_cents integer not null check (amount_cents > 0),
+  currency text not null default 'eur',
+  rail text not null check (rail in ('card', 'crypto')),
+  asset text not null default '',
+  network text not null default '',
+  wallet text not null default '',
+  status text not null default 'paid' check (status in ('paid', 'used')),
+  project_id text not null default '',
+  mock boolean not null default true,
+  created_at timestamptz not null default now(),
+  used_at timestamptz
+);
+
+create index if not exists purchases_owner_idx on public.purchases (owner_id, created_at desc);
+
+alter table public.purchases enable row level security;
+
+drop policy if exists "ver mis compras" on public.purchases;
+create policy "ver mis compras" on public.purchases
+  for select using (auth.uid() = owner_id);
+
+create or replace function public.mock_checkout(
+  p_plan text,
+  p_rail text,
+  p_asset text default '',
+  p_network text default '',
+  p_wallet text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  cents integer;
+  row public.purchases;
+begin
+  if uid is null then
+    raise exception 'Entra en la cuenta para pagar.';
+  end if;
+  if p_plan not in ('cita', 'cita_pro', 'plantilla', 'plantilla_pro') then
+    raise exception 'Ese plan no existe.';
+  end if;
+  if p_rail not in ('card', 'crypto') then
+    raise exception 'Esa forma de pago no vale.';
+  end if;
+  cents := case p_plan
+    when 'cita' then 295
+    when 'cita_pro' then 495
+    when 'plantilla' then 1295
+    else 1995
+  end;
+  insert into public.profiles (id) values (uid) on conflict (id) do nothing;
+  insert into public.purchases (
+    owner_id, plan, amount_cents, currency, rail, asset, network, wallet, status, mock
+  )
+  values (
+    uid,
+    p_plan,
+    cents,
+    'eur',
+    p_rail,
+    left(coalesce(p_asset, ''), 24),
+    left(coalesce(p_network, ''), 32),
+    left(coalesce(p_wallet, ''), 80),
+    'paid',
+    true
+  )
+  returning * into row;
+  return to_jsonb(row);
+end;
+$$;
+
+create or replace function public.claim_purchase(p_plan text, p_project text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  target uuid;
+  row public.purchases;
+begin
+  if uid is null then
+    raise exception 'Entra en la cuenta para crear.';
+  end if;
+  if p_plan not in ('cita', 'cita_pro', 'plantilla', 'plantilla_pro') then
+    raise exception 'Ese plan no existe.';
+  end if;
+  if coalesce(p_project, '') = '' then
+    raise exception 'Falta el proyecto.';
+  end if;
+
+  select id into target
+  from public.purchases
+  where owner_id = uid
+    and plan = p_plan
+    and status = 'paid'
+    and used_at is null
+  order by created_at
+  limit 1
+  for update;
+
+  if target is null then
+    raise exception 'No tienes ese plan libre.';
+  end if;
+
+  update public.purchases
+  set status = 'used',
+      used_at = now(),
+      project_id = left(p_project, 80)
+  where id = target
+  returning * into row;
+
+  return to_jsonb(row);
+end;
+$$;
+
+create or replace function public.release_purchase(p_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  row public.purchases;
+begin
+  if uid is null then
+    raise exception 'Entra en la cuenta para crear.';
+  end if;
+
+  update public.purchases
+  set status = 'paid',
+      used_at = null,
+      project_id = ''
+  where id = p_id
+    and owner_id = uid
+    and status = 'used'
+    and mock = true
+  returning * into row;
+
+  if not found then
+    raise exception 'No pude devolver el plan.';
+  end if;
+  return to_jsonb(row);
+end;
+$$;
+
+revoke all on function public.mock_checkout(text, text, text, text, text) from public, anon;
+revoke all on function public.claim_purchase(text, text) from public, anon;
+revoke all on function public.release_purchase(uuid) from public, anon;
+grant execute on function public.mock_checkout(text, text, text, text, text) to authenticated;
+grant execute on function public.claim_purchase(text, text) to authenticated;
+grant execute on function public.release_purchase(uuid) to authenticated;

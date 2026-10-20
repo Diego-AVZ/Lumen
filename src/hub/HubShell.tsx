@@ -55,7 +55,7 @@ export function HubShell({ children }: { children: ReactNode }) {
           <p className="font-display text-[2rem] italic leading-none">Lumen</p>
           <p className="mt-2 text-[11px] uppercase tracking-[0.22em] text-[#e8b86d]/80">Centro de control</p>
         </Link>
-        <nav className="mt-8 flex flex-1 flex-col gap-1">
+        <nav className="mt-8 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
           {HUB_VISTAS.map((item) => {
             const active = current === item.id;
             return (

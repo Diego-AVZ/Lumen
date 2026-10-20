@@ -1,4 +1,6 @@
 import { deleteCloudUniverse, listMine, loadOwned, saveUniverse, type CloudUniverse } from '@/lib/cloud';
+import type { PlanId } from '@/lib/plans';
+import { claimPurchase, releasePurchase } from '@/lib/purchases';
 import { parseProject, type ProjectDocument } from '@/schema/project';
 
 const INDEX = 'lumen.index.v1';
@@ -45,6 +47,23 @@ export async function loadDraft(id: string): Promise<ProjectDocument | null> {
 export async function saveDraft(doc: ProjectDocument) {
   cache.set(doc.meta.id, doc);
   await saveUniverse(doc);
+}
+
+export async function openPaidDraft(doc: ProjectDocument, plan: PlanId) {
+  const purchase = await claimPurchase(plan, doc.meta.id);
+  doc.meta.plan = plan;
+  doc.meta.purchaseId = purchase.id;
+  doc.meta.updatedAt = new Date().toISOString();
+  try {
+    await saveDraft(doc);
+  } catch (error) {
+    try {
+      await releasePurchase(purchase.id);
+    } catch {
+      /* si no vuelve el plan, el proyecto tampoco se guardó */
+    }
+    throw error;
+  }
 }
 
 export async function purgeProject(id: string, _slug = '') {

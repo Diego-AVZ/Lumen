@@ -234,9 +234,14 @@ button {
   to { transform: rotate(360deg); }
 }
 
+.lumen-pay-pulse {
+  animation: lumen-wait-twinkle 1.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lumen-wait-mark::after,
-  .lumen-wait-mark span {
+  .lumen-wait-mark span,
+  .lumen-pay-pulse {
     animation: none;
   }
 

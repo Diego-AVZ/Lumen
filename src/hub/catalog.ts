@@ -1,4 +1,4 @@
-export type HubVista = 'proyectos' | 'plan' | 'seguimiento' | 'ideas' | 'instrucciones' | 'crear';
+export type HubVista = 'proyectos' | 'plan' | 'uso' | 'seguimiento' | 'ideas' | 'instrucciones' | 'crear';
 
 export const HUB_VISTAS: {
   id: HubVista;
@@ -8,7 +8,8 @@ export const HUB_VISTAS: {
   accent?: boolean;
 }[] = [
   { id: 'proyectos', label: 'Mis proyectos', hint: 'Universos y lo que venga', mark: '✦' },
-  { id: 'plan', label: 'Plan y uso', hint: 'Lo que tienes y lo que queda', mark: '◐' },
+  { id: 'plan', label: 'Plan', hint: 'Contratar un regalo', mark: '◐' },
+  { id: 'uso', label: 'Uso', hint: 'Lo que ya has abierto', mark: '▤' },
   { id: 'seguimiento', label: 'Seguimiento', hint: 'Regalos que ya viven', mark: '⌖' },
   { id: 'ideas', label: 'Ideas', hint: 'Por si te quedas en blanco', mark: '✎' },
   { id: 'instrucciones', label: 'Instrucciones', hint: 'Cómo se construye', mark: '?' },

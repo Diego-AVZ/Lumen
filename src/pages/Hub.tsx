@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { listDrafts, loadDraft, purgeProject, saveDraft, type DraftSummary } from '@/lib/drafts';
+import { listDrafts, loadDraft, openPaidDraft, purgeProject, type DraftSummary } from '@/lib/drafts';
 import { AccountBar } from '@/studio/AccountBar';
 import { isCita, parseProject, projectTitle } from '@/schema/project';
 import { exampleDocument } from '@/schema/example';
@@ -10,6 +10,9 @@ import { HUB_VISTAS, IDEA_SEEDS, type HubVista } from '@/hub/catalog';
 import { addIdea, listIdeas, removeIdea, type IdeaNote } from '@/hub/ideas';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
 import { WaitMark } from '@/hub/WaitMark';
+import { PlanGate, PlanShop } from '@/hub/PlanShop';
+import { PLANS, type PlanFamily, type PlanId } from '@/lib/plans';
+import { listPurchases, openPlans, tally, usePurchases } from '@/lib/purchases';
 import { ago, clock, lasted, loadVisitStats, type VisitStat } from '@/lib/stats';
 
 export function Hub() {
@@ -26,7 +29,8 @@ export function Hub() {
   return (
     <HubShell>
       {vista === 'proyectos' && <ProjectsPanel />}
-      {vista === 'plan' && <PlanPanel />}
+      {vista === 'plan' && <PlanShop />}
+      {vista === 'uso' && <UsoPanel />}
       {vista === 'seguimiento' && <TrackingPanel />}
       {vista === 'ideas' && <IdeasPanel />}
       {vista === 'instrucciones' && <GuidePanel />}
@@ -48,6 +52,34 @@ function ProjectsPanel() {
   const [rows, setRows] = useState<DraftSummary[] | null>(null);
   const [pending, setPending] = useState<{ id: string; slug: string; title: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const [spend, setSpend] = useState<{ family: PlanFamily; run: (plan: PlanId) => void } | null>(null);
+
+  const spendOrRun = async (family: PlanFamily, run: (plan: PlanId) => Promise<void>) => {
+    setNote('');
+    try {
+      const bought = await listPurchases();
+      const open = openPlans(bought, family);
+      if (open.length === 0) {
+        navigate(`/crear?vista=plan&plan=${family === 'cita' ? 'cita' : 'plantilla'}`);
+        return;
+      }
+      if (open.length === 1) {
+        await run(open[0]);
+        return;
+      }
+      setSpend({
+        family,
+        run: (plan) => {
+          void run(plan).catch((err: unknown) => {
+            setNote(err instanceof Error ? err.message : 'No se pudo crear.');
+          });
+        },
+      });
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : 'No pude mirar tus planes.');
+    }
+  };
 
   const refresh = () => {
     void listDrafts().then(setRows);
@@ -75,6 +107,7 @@ function ProjectsPanel() {
       <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-inkwell/60">
         Hoy son universos. Mañana pueden ser cartas, álbumes o mapas. Viven en tu cuenta.
       </p>
+      {note && <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[#8a3d32]">{note}</p>}
 
       {loading && <WaitMark line="Trayendo tus proyectos" />}
 
@@ -94,14 +127,20 @@ function ProjectsPanel() {
               className="rounded-full px-5 py-3 text-linen ring-1 ring-white/15"
               onClick={() => {
                 if (busy) return;
-                setBusy(true);
-                const sample = exampleDocument();
-                sample.meta.id = uid('uni');
-                sample.meta.status = 'draft';
-                sample.meta.slug = '';
-                void saveDraft(sample)
-                  .then(() => navigate(`/crear/${sample.meta.id}`))
-                  .catch(() => setBusy(false));
+                void spendOrRun('plantilla', async (plan) => {
+                  setBusy(true);
+                  try {
+                    const sample = exampleDocument();
+                    sample.meta.id = uid('uni');
+                    sample.meta.status = 'draft';
+                    sample.meta.slug = '';
+                    await openPaidDraft(sample, plan);
+                    navigate(`/crear/${sample.meta.id}`);
+                  } catch (err) {
+                    setBusy(false);
+                    throw err;
+                  }
+                });
               }}
             >
               Usar el ejemplo
@@ -136,16 +175,21 @@ function ProjectsPanel() {
               <button
                 type="button"
                 onClick={() => {
-                  void loadDraft(row.id).then((source) => {
+                  void spendOrRun(row.kind === 'cita' ? 'cita' : 'plantilla', async (plan) => {
+                    const source = await loadDraft(row.id);
                     if (!source) return;
                     const copy = parseProject(JSON.parse(JSON.stringify(source)));
                     copy.meta.id = isCita(copy) ? uid('cita') : uid('uni');
                     copy.meta.slug = '';
                     copy.meta.status = 'draft';
                     copy.meta.publishedAt = undefined;
+                    copy.meta.unlockHash = undefined;
+                    copy.meta.plan = undefined;
+                    copy.meta.purchaseId = undefined;
                     copy.meta.title = `${projectTitle(source)} copia`;
                     copy.meta.titleTouched = true;
-                    return saveDraft(copy).then(refresh);
+                    await openPaidDraft(copy, plan);
+                    refresh();
                   });
                 }}
               >
@@ -180,59 +224,82 @@ function ProjectsPanel() {
           }}
         />
       )}
+      {spend && (
+        <PlanGate
+          family={spend.family}
+          onClose={() => setSpend(null)}
+          onUse={(plan) => {
+            const run = spend.run;
+            setSpend(null);
+            run(plan);
+          }}
+        />
+      )}
       </main>
     );
   }
 
-function PlanPanel() {
+function UsoPanel() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<DraftSummary[] | null>(null);
+  const { rows: bought, error, loading } = usePurchases();
 
   useEffect(() => {
     void listDrafts().then(setRows);
   }, []);
 
   const list = rows ?? [];
-  const loading = rows === null;
-
   const published = list.filter((row) => row.status === 'published').length;
-  const meters = [
-    { label: 'Proyectos', value: list.length, cap: 12, line: 'En tu cuenta' },
-    { label: 'Publicados', value: published, cap: 6, line: 'Listos para abrir' },
-  ];
+  const waiting = rows === null || loading;
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-10 sm:px-8">
-      <p className="text-[12px] uppercase tracking-[0.22em] text-brass">Plan y uso</p>
-      <h1 className="mt-3 font-display text-[clamp(2.6rem,6vw,4.4rem)] italic leading-[0.92]">Taller libre</h1>
+      <p className="text-[12px] uppercase tracking-[0.22em] text-brass">Uso</p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+        <h1 className="font-display text-[clamp(2.6rem,6vw,4.4rem)] italic leading-[0.92]">Lo que has contratado</h1>
+        <Link to="/crear?vista=plan" className="rounded-full bg-inkwell px-5 py-2.5 text-[14px] text-linen">
+          Contratar
+        </Link>
+      </div>
       <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-inkwell/60">
-        Los proyectos viven en tu cuenta. Entras con Google o el correo y los tienes en cualquier sitio.
+        Cada pago libre se gasta al crear. Borrar un proyecto no lo devuelve.
       </p>
-      {loading ? (
+      {error && <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-[#8a3d32]">{error}</p>}
+      {waiting ? (
         <WaitMark line="Contando lo que tienes" />
       ) : (
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        {meters.map((meter) => {
-          const pct = Math.min(100, Math.round((meter.value / meter.cap) * 100));
-          return (
-            <article key={meter.label} className="rounded-[28px] bg-white p-6 ring-1 ring-black/5">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">{meter.line}</p>
-              <h2 className="mt-3 font-display text-4xl italic">{meter.label}</h2>
-              <p className="mt-2 text-[28px] tabular-nums">
-                {meter.value}
-                <span className="text-[15px] text-inkwell/35"> / {meter.cap}</span>
-              </p>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-linen">
-                <div className="h-full rounded-full bg-brass" style={{ width: `${pct}%` }} />
-              </div>
+        <>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            {PLANS.map((plan) => {
+              const count = tally(bought ?? [], plan.id);
+              return (
+                <article key={plan.id} className="rounded-[28px] bg-white p-6 ring-1 ring-black/5">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-brass">{plan.family === 'cita' ? 'Sobre' : 'Plantilla'}</p>
+                  <h2 className="mt-2 font-display text-4xl italic">{plan.name}</h2>
+                  <p className="mt-3 text-[16px] text-inkwell/60">
+                    {count.bought === 0
+                      ? 'Todavía no'
+                      : `${count.free} ${count.free === 1 ? 'libre' : 'libres'} · ${count.used} ${count.used === 1 ? 'usado' : 'usados'}`}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <article className="rounded-[28px] bg-white p-6 ring-1 ring-black/5">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">En tu cuenta</p>
+              <h2 className="mt-2 font-display text-4xl italic">Proyectos</h2>
+              <p className="mt-3 text-[28px] tabular-nums">{list.length}</p>
             </article>
-          );
-        })}
-      </div>
+            <article className="rounded-[28px] bg-white p-6 ring-1 ring-black/5">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Listos para abrir</p>
+              <h2 className="mt-2 font-display text-4xl italic">Publicados</h2>
+              <p className="mt-3 text-[28px] tabular-nums">{published}</p>
+            </article>
+          </div>
+        </>
       )}
-      <AccountBar
-        onOpen={(id) => navigate(`/crear/${id}`)}
-      />
+      <AccountBar onOpen={(id) => navigate(`/crear/${id}`)} />
     </main>
   );
 }
@@ -410,7 +477,7 @@ function IdeasPanel() {
 
 function GuidePanel() {
   const steps = [
-    { n: '01', title: 'Elige plantilla', body: 'Hoy, universo. Luego habrá más formas de regalo, todas en Mis proyectos.' },
+    { n: '01', title: 'Contrata', body: 'En Plan eliges el sobre o la plantilla. Un pago abre un proyecto. Sin uno libre, Crear no sigue.' },
     { n: '02', title: 'Elige el modo', body: 'Fácil: un wizard de pocos pasos. Máxima: el estudio entero, estrella a estrella.' },
     { n: '03', title: 'El cielo', body: 'Su nombre en el centro. Cada estrella es un capítulo: historia, carta, lista, archivo…' },
     { n: '04', title: 'Publicar', body: 'Sale un enlace /u/… para abrir en el móvil. Puedes volver aquí a seguir editando.' },
