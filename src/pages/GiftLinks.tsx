@@ -7,6 +7,10 @@ export function GiftLinks({ tone = 'dark' }: { tone?: 'dark' | 'light' }) {
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {
+    if (!import.meta.env.DEV) {
+      setRows([]);
+      return;
+    }
     void fetch('/api/universes', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Row[]) => setRows(Array.isArray(data) ? data.filter((row) => row.slug) : []))
