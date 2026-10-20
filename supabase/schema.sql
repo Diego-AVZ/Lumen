@@ -146,7 +146,7 @@ create or replace function public.open_gift(p_slug text, p_phrase text)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   row public.universes;
@@ -178,7 +178,7 @@ returns jsonb
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   row public.universes;
@@ -191,15 +191,20 @@ begin
   if not found then
     return jsonb_build_object('state', 'missing');
   end if;
-  payload := case
-    when jsonb_typeof(row.document) = 'string' then (row.document #>> '{}')::jsonb
-    else row.document
+  if coalesce(row.unlock_hash, '') <> '' and coalesce(p_phrase, '') = '' then
+    return jsonb_build_object('state', 'locked');
+  end if;
+  begin
+    payload := case
+      when jsonb_typeof(to_jsonb(row.document)) = 'string' then (to_jsonb(row.document) #>> '{}')::jsonb
+      when jsonb_typeof(row.document) = 'string' then (row.document #>> '{}')::jsonb
+      else row.document
+    end;
+  exception when others then
+    payload := row.document;
   end;
   if coalesce(row.unlock_hash, '') = '' then
     return jsonb_build_object('state', 'open', 'document', payload);
-  end if;
-  if coalesce(p_phrase, '') = '' then
-    return jsonb_build_object('state', 'locked');
   end if;
   hashed := encode(digest(convert_to(p_phrase, 'utf8'), 'sha256'), 'hex');
   if hashed = row.unlock_hash then

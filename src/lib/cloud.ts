@@ -137,32 +137,65 @@ async function persistUniverse(doc: ProjectDocument) {
   if (result.error) throw cloudError(result.error);
 }
 
+function unwrapJson(raw: unknown): unknown {
+  let value = raw;
+  for (let i = 0; i < 3; i += 1) {
+    if (typeof value !== 'string') break;
+    const trimmed = value.trim();
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) break;
+    try {
+      value = JSON.parse(trimmed);
+    } catch {
+      break;
+    }
+  }
+  return value;
+}
+
 function decodeDocument(raw: unknown): ProjectDocument | null {
   try {
-    return parseProject(raw);
+    return parseProject(unwrapJson(raw));
   } catch {
     return null;
   }
+}
+
+function asGiftRead(raw: unknown): GiftRead | null {
+  let value = unwrapJson(raw);
+  if (Array.isArray(value)) value = value[0];
+  if (!value || typeof value !== 'object') return null;
+  const rec = value as Record<string, unknown>;
+  if ('read_gift' in rec) return asGiftRead(rec.read_gift);
+  if (rec.state === 'open') return { state: 'open', doc: decodeDocument(rec.document) };
+  if (rec.state === 'locked' || rec.state === 'wrong' || rec.state === 'missing') {
+    return { state: rec.state, doc: null };
+  }
+  if (rec.kind === 'cita' || rec.stars) return { state: 'open', doc: decodeDocument(rec) };
+  return null;
 }
 
 type GiftRead = { state: 'missing' | 'open' | 'locked' | 'wrong'; doc: ProjectDocument | null };
 
 export async function readGift(slug: string, phrase = ''): Promise<GiftRead> {
   if (!supabase || !slug) return { state: 'missing', doc: null };
-  const rpc = await supabase.rpc('read_gift', { p_slug: slug, p_phrase: phrase });
-  if (!rpc.error && rpc.data && typeof rpc.data === 'object') {
-    const data = rpc.data as { state?: string; document?: unknown };
-    if (data.state === 'open') return { state: 'open', doc: decodeDocument(data.document) };
-    if (data.state === 'locked' || data.state === 'wrong' || data.state === 'missing') {
-      return { state: data.state, doc: null };
-    }
+  const rpc = await supabase.rpc('read_gift', { p_slug: slug, p_phrase: phrase ?? '' });
+  if (!rpc.error) {
+    const parsed = asGiftRead(rpc.data);
+    if (parsed?.state === 'open' && parsed.doc) return parsed;
+    if (parsed?.state === 'open') return { state: 'open', doc: null };
+    if (parsed) return parsed;
   }
   const lock = await supabase.rpc('gift_lock', { p_slug: slug });
   if (!lock.error && lock.data === 'locked') {
     if (!phrase) return { state: 'locked', doc: null };
     const opened = await supabase.rpc('open_gift', { p_slug: slug, p_phrase: phrase });
-    if (!opened.error && opened.data) return { state: 'open', doc: decodeDocument(opened.data) };
-    if (opened.error && String(opened.error.message).includes('wrong_phrase')) return { state: 'wrong', doc: null };
+    if (!opened.error && opened.data) {
+      const doc = decodeDocument(opened.data) ?? asGiftRead(opened.data)?.doc ?? null;
+      return doc ? { state: 'open', doc } : { state: 'wrong', doc: null };
+    }
+    if (opened.error && /wrong_phrase|digest|function/i.test(String(opened.error.message))) {
+      return { state: 'wrong', doc: null };
+    }
     return { state: 'locked', doc: null };
   }
   if (!lock.error && lock.data === 'missing') return { state: 'missing', doc: null };
@@ -172,9 +205,9 @@ export async function readGift(slug: string, phrase = ''): Promise<GiftRead> {
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle();
-  if (error || !data?.document) return { state: 'missing', doc: null };
+  if (error || !data?.document) return { state: phrase ? 'wrong' : 'locked', doc: null };
   const doc = decodeDocument(data.document);
-  if (!doc) return { state: 'missing', doc: null };
+  if (!doc) return { state: 'wrong', doc: null };
   if (doc.meta.unlockHash && !phrase) return { state: 'locked', doc: null };
   if (doc.meta.unlockHash && phrase) {
     const hashed = await hashPhrase(phrase);
@@ -196,10 +229,9 @@ export async function inspectGift(slug: string): Promise<'missing' | 'open' | 'l
 
 export async function openGift(slug: string, phrase: string): Promise<ProjectDocument> {
   const read = await readGift(slug, phrase);
-  if (read.state === 'wrong') throw new Error('La contraseña no es esa.');
-  if (read.state === 'locked') throw new Error('Falta la contraseña.');
-  if (read.state !== 'open' || !read.doc) throw new Error('Este regalo no está publicado.');
-  return read.doc;
+  if (read.state === 'open' && read.doc) return read.doc;
+  if (read.state === 'missing') throw new Error('Este regalo no está publicado.');
+  throw new Error('La contraseña no es esa.');
 }
 
 export type CloudUniverse = {
