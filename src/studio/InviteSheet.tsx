@@ -19,6 +19,7 @@ type Design = {
   fade: Fade;
   motif: Motif;
   seed: number;
+  eyebrow: string;
   line: string;
   button: string;
 };
@@ -27,8 +28,8 @@ function paperById(id: string): Paper {
   return PAPERS.find((item) => item.id === id) ?? PAPERS[0];
 }
 
-function readDesign(projectId: string, fallbackLine: string): Design {
-  const base: Design = { paper: 'lino', fade: 'suave', motif: 'mix', seed: 4, line: fallbackLine, button: 'Ábrelo' };
+function readDesign(projectId: string, fallbackLine: string, fallbackEyebrow: string): Design {
+  const base: Design = { paper: 'lino', fade: 'suave', motif: 'mix', seed: 4, eyebrow: fallbackEyebrow, line: fallbackLine, button: 'Ábrelo' };
   try {
     const raw = sessionStorage.getItem(`lumen.invite.${projectId}`);
     if (!raw) return base;
@@ -39,6 +40,7 @@ function readDesign(projectId: string, fallbackLine: string): Design {
       paper: PAPERS.some((item) => item.id === saved.paper) ? String(saved.paper) : base.paper,
       fade: saved.fade === 'diagonal' || saved.fade === 'centro' ? saved.fade : 'suave',
       motif: MOTIFS.some((item) => item.id === saved.motif) ? (saved.motif as Motif) : 'mix',
+      eyebrow: typeof saved.eyebrow === 'string' ? saved.eyebrow : base.eyebrow,
     };
   } catch {
     return base;
@@ -65,7 +67,7 @@ export function InviteSheet({
   onClose: () => void;
 }) {
   const view = useRef<HTMLCanvasElement>(null);
-  const [design, setDesign] = useState<Design>(() => readDesign(projectId, line));
+  const [design, setDesign] = useState<Design>(() => readDesign(projectId, line, eyebrow));
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
   const paper = useMemo(() => paperById(design.paper), [design.paper]);
@@ -102,7 +104,7 @@ export function InviteSheet({
         fade: design.fade,
         motif: design.motif,
         seed: design.seed,
-        eyebrow,
+        eyebrow: design.eyebrow,
         title,
         line: design.line,
         button: design.button,
@@ -115,7 +117,7 @@ export function InviteSheet({
     return () => {
       cancel = true;
     };
-  }, [design, eyebrow, from, paper, title, url]);
+  }, [design, from, paper, title, url]);
 
   const renderFile = async () => {
     await loadInviteFonts();
@@ -131,7 +133,7 @@ export function InviteSheet({
       fade: design.fade,
       motif: design.motif,
       seed: design.seed,
-      eyebrow,
+      eyebrow: design.eyebrow,
       title,
       line: design.line,
       button: design.button,
@@ -329,6 +331,29 @@ export function InviteSheet({
                 </button>
               )}
             </div>
+
+            <p className="mt-7 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Arriba</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['Una cita', 'Un plan', 'Una quedada', 'Un café', 'Una salida', from.trim() ? `De ${from.trim()}` : '']
+                .filter(Boolean)
+                .map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => patch({ eyebrow: item })}
+                    className={`rounded-full px-3 py-1.5 text-[13px] ${design.eyebrow === item ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+                  >
+                    {item}
+                  </button>
+                ))}
+            </div>
+            <input
+              value={design.eyebrow}
+              maxLength={36}
+              onChange={(event) => patch({ eyebrow: event.target.value })}
+              placeholder="Una cita"
+              className="mt-3 w-full rounded-2xl bg-white px-4 py-3 outline-none ring-1 ring-black/10"
+            />
 
             <label className="mt-7 block">
               <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Frase</span>

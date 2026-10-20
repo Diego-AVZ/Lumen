@@ -318,51 +318,75 @@ export function drawInvite(ctx: CanvasRenderingContext2D, paint: InvitePaint): {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  const eyebrowY = 188;
   ctx.textAlign = 'center';
-  ctx.fillStyle = paper.ink;
-  ctx.letterSpacing = '6px';
-  ctx.font = '600 26px Outfit, sans-serif';
-  ctx.fillText(paint.eyebrow.toUpperCase(), CARD_W / 2, eyebrowY);
-  ctx.letterSpacing = '0px';
+  const eyebrow = paint.eyebrow.trim();
+  let headerBottom = 168;
+  if (eyebrow) {
+    let eyebrowSize = 26;
+    ctx.fillStyle = paper.ink;
+    ctx.letterSpacing = '6px';
+    ctx.font = `600 ${eyebrowSize}px Outfit, sans-serif`;
+    while (eyebrowSize > 16 && ctx.measureText(eyebrow.toUpperCase()).width > 820) {
+      eyebrowSize -= 1;
+      ctx.font = `600 ${eyebrowSize}px Outfit, sans-serif`;
+    }
+    ctx.fillText(eyebrow.toUpperCase(), CARD_W / 2, 188);
+    ctx.letterSpacing = '0px';
 
-  const ruleY = eyebrowY + 36;
-  ctx.strokeStyle = hexAlpha(paper.accent, 0.7);
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 - 150, ruleY);
-  ctx.lineTo(CARD_W / 2 - 18, ruleY);
-  ctx.moveTo(CARD_W / 2 + 18, ruleY);
-  ctx.lineTo(CARD_W / 2 + 150, ruleY);
-  ctx.stroke();
-  spark(ctx, CARD_W / 2, ruleY, 10, paper.accent);
+    const ruleY = 224;
+    ctx.strokeStyle = hexAlpha(paper.accent, 0.7);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(CARD_W / 2 - 150, ruleY);
+    ctx.lineTo(CARD_W / 2 - 18, ruleY);
+    ctx.moveTo(CARD_W / 2 + 18, ruleY);
+    ctx.lineTo(CARD_W / 2 + 150, ruleY);
+    ctx.stroke();
+    spark(ctx, CARD_W / 2, ruleY, 10, paper.accent);
+    headerBottom = ruleY;
+  }
 
   const title = paint.title.trim() || 'Para ti';
-  let titleSize = 118;
+  let titleSize = 108;
   ctx.font = `italic 600 ${titleSize}px Fraunces, Georgia, serif`;
   while (titleSize > 64 && ctx.measureText(title).width > 860) {
     titleSize -= 4;
     ctx.font = `italic 600 ${titleSize}px Fraunces, Georgia, serif`;
   }
   ctx.fillStyle = paper.ink;
-  const titleY = ruleY + 8 + titleSize;
+  const titleY = headerBottom + 16 + titleSize;
   ctx.fillText(title, CARD_W / 2, titleY);
 
   ctx.font = '400 34px Outfit, sans-serif';
   const phrase = wrap(ctx, paint.line.trim() || 'Hay algo que quiero que abras.', 760).slice(0, 3);
-  let y = titleY + 28;
+  const phraseLead = 52;
+  ctx.font = '600 34px Outfit, sans-serif';
+  const label = paint.button.trim() || 'Ábrelo';
+  const buttonW = Math.max(460, ctx.measureText(label).width + 140);
+  const buttonH = 104;
+  ctx.font = '400 32px Outfit, sans-serif';
+  const pretty = paint.url.replace(/^https?:\/\//, '');
+  const urlLines = wrap(ctx, pretty, 760).slice(0, 2);
+  const urlLead = 44;
+
+  const codeSize = 248;
+  const cardPad = 28;
+  const cardW = codeSize + cardPad * 2;
+  const cardH = codeSize + cardPad * 2;
+  const footerTop = CARD_H - (paint.from.trim() ? 196 : 140);
+  const blocks = phrase.length * phraseLead + buttonH + urlLines.length * urlLead + cardH + 56;
+  const gap = Math.max(32, (footerTop - titleY - blocks) / 5);
+
+  ctx.font = '400 34px Outfit, sans-serif';
   ctx.fillStyle = hexAlpha(paper.ink, 0.78);
+  let y = titleY + gap;
   for (const row of phrase) {
-    y += 48;
+    y += phraseLead;
     ctx.fillText(row, CARD_W / 2, y);
   }
 
-  const label = paint.button.trim() || 'Ábrelo';
-  ctx.font = '600 34px Outfit, sans-serif';
-  const buttonW = Math.max(460, ctx.measureText(label).width + 140);
-  const buttonH = 104;
   const buttonX = (CARD_W - buttonW) / 2;
-  const buttonY = y + 48;
+  const buttonY = y + gap;
   ctx.save();
   ctx.shadowColor = hexAlpha(paper.ink, 0.16);
   ctx.shadowBlur = 24;
@@ -373,24 +397,19 @@ export function drawInvite(ctx: CanvasRenderingContext2D, paint: InvitePaint): {
   ctx.restore();
   ctx.fillStyle = paper.from;
   ctx.font = '600 34px Outfit, sans-serif';
+  ctx.textAlign = 'center';
   ctx.fillText(label, CARD_W / 2, buttonY + 66);
 
   ctx.font = '400 32px Outfit, sans-serif';
   ctx.fillStyle = hexAlpha(paper.ink, 0.62);
-  const pretty = paint.url.replace(/^https?:\/\//, '');
-  const urlLines = wrap(ctx, pretty, 760).slice(0, 2);
-  let urlY = buttonY + buttonH + 52;
+  let urlY = buttonY + buttonH + gap;
   for (const row of urlLines) {
+    urlY += urlLead;
     ctx.fillText(row, CARD_W / 2, urlY);
-    urlY += 40;
   }
 
-  const codeSize = 248;
-  const cardPad = 28;
-  const cardW = codeSize + cardPad * 2;
-  const cardH = codeSize + cardPad * 2;
   const cardX = (CARD_W - cardW) / 2;
-  const cardY = urlY + 28;
+  const cardY = urlY + gap;
   ctx.save();
   ctx.shadowColor = hexAlpha(paper.ink, 0.14);
   ctx.shadowBlur = 28;
