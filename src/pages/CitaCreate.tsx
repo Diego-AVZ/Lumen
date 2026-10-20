@@ -6,7 +6,7 @@ import { uid } from '@/lib/motion';
 import { DateSlots } from '@/cita/DateSlots';
 import { PriceTag } from '@/hub/PriceTag';
 import { EmojiBar, insertEmoji } from '@/cita/EmojiBar';
-import { CITA_EYEBROWS, CITA_PHRASES, CITA_SEALS, blankCita, citaTitle, nearbySlots, type CitaEyebrow, type CitaSeal } from '@/schema/cita';
+import { CITA_EYEBROWS, CITA_PHRASES, CITA_SEALS, blankCita, citaTitle, nearbySlots, type CitaSeal } from '@/schema/cita';
 
 export function CitaCreate({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
   const [question, setQuestion] = useState(CITA_PHRASES[0]);
   const [letter, setLetter] = useState('No hace falta que sea perfecto. Solo quiero verte.');
   const [seal, setSeal] = useState<CitaSeal>('heart');
-  const [eyebrow, setEyebrow] = useState<CitaEyebrow>('cita');
+  const [eyebrow, setEyebrow] = useState('Una cita');
   const [envelope, setEnvelope] = useState('');
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const letterRef = useRef<HTMLTextAreaElement>(null);
@@ -90,15 +90,22 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
             <input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Alex" className="mt-2 w-full border-b border-black/10 bg-transparent py-3 text-2xl outline-none placeholder:text-inkwell/25" />
           </label>
           <p className="mt-8 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Lo que pone arriba</p>
+          <input
+            value={eyebrow}
+            maxLength={42}
+            onChange={(e) => setEyebrow(e.target.value)}
+            placeholder="Una cita"
+            className="mt-3 w-full rounded-[22px] bg-white px-4 py-3 text-[16px] outline-none ring-1 ring-black/10"
+          />
           <div className="mt-3 flex flex-wrap gap-2">
-            {CITA_EYEBROWS.map((item) => (
+            {[...CITA_EYEBROWS, fromName.trim() ? `De ${fromName.trim()}` : 'De quien invita'].map((item) => (
               <button
-                key={item.id}
+                key={item}
                 type="button"
-                onClick={() => setEyebrow(item.id)}
-                className={`rounded-full px-4 py-2 text-[14px] ${eyebrow === item.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+                onClick={() => setEyebrow(item)}
+                className={`rounded-full px-4 py-2 text-[14px] ${eyebrow === item ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
               >
-                {item.id === 'from' ? (fromName.trim() ? `De ${fromName.trim()}` : 'De quien invita') : item.label}
+                {item}
               </button>
             ))}
           </div>

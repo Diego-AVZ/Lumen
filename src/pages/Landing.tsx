@@ -272,7 +272,7 @@ export function Landing() {
     const doc = blankCita();
     doc.forName = 'Clara';
     doc.fromName = 'Alex';
-    doc.eyebrow = 'from';
+    doc.eyebrow = 'De Alex';
     doc.question = '¿Quieres venir conmigo a cenar?';
     doc.letter = 'No hace falta que sea perfecto. Solo quiero verte.';
     doc.envelope = 'Ábrelo cuando puedas';

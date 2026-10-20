@@ -332,7 +332,16 @@ export function InviteSheet({
               )}
             </div>
 
-            <p className="mt-7 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Arriba</p>
+            <label className="mt-7 block">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Arriba, lo que quieras</span>
+              <input
+                value={design.eyebrow}
+                maxLength={42}
+                onChange={(event) => patch({ eyebrow: event.target.value })}
+                placeholder="Una cita"
+                className="mt-2 w-full rounded-2xl bg-white px-4 py-3 outline-none ring-1 ring-black/10"
+              />
+            </label>
             <div className="mt-3 flex flex-wrap gap-2">
               {['Una cita', 'Un plan', 'Una quedada', 'Un café', 'Una salida', from.trim() ? `De ${from.trim()}` : '']
                 .filter(Boolean)
@@ -347,13 +356,6 @@ export function InviteSheet({
                   </button>
                 ))}
             </div>
-            <input
-              value={design.eyebrow}
-              maxLength={36}
-              onChange={(event) => patch({ eyebrow: event.target.value })}
-              placeholder="Una cita"
-              className="mt-3 w-full rounded-2xl bg-white px-4 py-3 outline-none ring-1 ring-black/10"
-            />
 
             <label className="mt-7 block">
               <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Frase</span>

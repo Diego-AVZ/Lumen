@@ -101,15 +101,22 @@ export function DateAskStudio({ id }: { id: string }) {
             <input value={doc.fromName} onChange={(e) => edit({ fromName: e.target.value })} className="mt-1 w-full border-b border-black/10 bg-transparent py-2 text-lg outline-none" />
           </label>
           <p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Lo que pone arriba</p>
+          <input
+            value={doc.eyebrow}
+            maxLength={42}
+            onChange={(e) => edit({ eyebrow: e.target.value })}
+            placeholder="Una cita"
+            className="mt-2 w-full rounded-2xl bg-white px-4 py-3 text-[15px] outline-none ring-1 ring-black/10"
+          />
           <div className="mt-3 flex flex-wrap gap-2">
-            {CITA_EYEBROWS.map((item) => (
+            {[...CITA_EYEBROWS, doc.fromName.trim() ? `De ${doc.fromName.trim()}` : 'De quien invita'].map((item) => (
               <button
-                key={item.id}
+                key={item}
                 type="button"
-                onClick={() => edit({ eyebrow: item.id })}
-                className={`rounded-full px-3 py-1.5 text-[13px] ${doc.eyebrow === item.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+                onClick={() => edit({ eyebrow: item })}
+                className={`rounded-full px-3 py-1.5 text-[13px] ${doc.eyebrow === item ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
               >
-                {item.id === 'from' ? (doc.fromName.trim() ? `De ${doc.fromName.trim()}` : 'De quien invita') : item.label}
+                {item}
               </button>
             ))}
           </div>
