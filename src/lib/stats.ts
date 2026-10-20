@@ -75,6 +75,14 @@ async function pingCloud(
 ) {
   if (!supabase) return false;
   const visitor = visitorKey().slice(0, 80);
+  const rpc = await supabase.rpc('ping_gift', {
+    p_local_id: id,
+    p_visitor: visitor,
+    p_kind: kind,
+    p_date_id: extra?.dateId ?? '',
+    p_date_label: extra?.dateLabel ?? '',
+  });
+  if (!rpc.error) return true;
   const found = await supabase.from('universes').select('id').eq('local_id', id).maybeSingle();
   if (found.error || !found.data?.id) return false;
   const universeId = found.data.id as string;
@@ -117,8 +125,27 @@ function mergeStat(into: VisitStat, track: TrackState): VisitStat {
   return next;
 }
 
+function asVisitStat(raw: unknown): VisitStat {
+  const track = asTrack(raw);
+  return {
+    opens: track.opens ?? 0,
+    lastAt: track.lastAt ?? '',
+    lastMs: track.lastMs ?? 0,
+    noTries: track.noTries ?? 0,
+    reply: track.reply,
+  };
+}
+
 async function loadCloudStats(): Promise<Record<string, VisitStat> | null> {
   if (!supabase) return null;
+  const rpc = await supabase.rpc('my_gift_stats');
+  if (!rpc.error && rpc.data && typeof rpc.data === 'object' && !Array.isArray(rpc.data)) {
+    const stats: Record<string, VisitStat> = {};
+    for (const [id, value] of Object.entries(rpc.data as Record<string, unknown>)) {
+      stats[id] = asVisitStat(value);
+    }
+    return stats;
+  }
   const unis = await supabase.from('universes').select('id, local_id');
   if (unis.error || !unis.data?.length) return unis.error ? null : {};
   const byUuid = new Map(unis.data.map((row) => [String(row.id), String(row.local_id)]));
