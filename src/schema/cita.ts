@@ -50,10 +50,9 @@ export function blankCita(): DateAskDocument {
     fromName: '',
     question: CITA_PHRASES[0],
     letter: 'No hace falta que sea perfecto. Solo quiero verte.',
-    dates: [
-      { id: uid('when'), label: 'Viernes por la noche', when: '' },
-      { id: uid('when'), label: 'Sábado a media tarde', when: '' },
-    ],
+    dates: nearbySlots()
+      .slice(0, 2)
+      .map((slot) => ({ id: uid('when'), label: slot.label, when: slot.when })),
   };
 }
 
@@ -100,19 +99,70 @@ export function parseCita(input: unknown): DateAskDocument {
   };
 }
 
+export function prettyWhen(when: string) {
+  if (!when) return '';
+  const date = parseWhen(when);
+  if (!date) return '';
+  const text = new Intl.DateTimeFormat('es', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export function formatDateOption(option: DateOption) {
-  if (option.when) {
-    const date = new Date(option.when);
-    if (!Number.isNaN(date.getTime())) {
-      const when = new Intl.DateTimeFormat('es', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(date);
-      return option.label.trim() ? `${option.label} · ${when}` : when;
+  const when = prettyWhen(option.when);
+  if (when) return when;
+  return option.label.trim() || 'Un día';
+}
+
+export function parseWhen(value: string) {
+  if (!value) return null;
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4] || 20), Number(match[5] || 0));
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function toDateInput(value: string) {
+  const date = parseWhen(value);
+  if (!date) return '';
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function toTimeInput(value: string) {
+  const date = parseWhen(value);
+  if (!date) return '';
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function fromDateTime(day: string, time: string) {
+  if (!day) return '';
+  return `${day}T${time || '20:00'}`;
+}
+
+function pad(n: number) {
+  return String(n).padStart(2, '0');
+}
+
+export function nearbySlots(from = new Date()) {
+  const hours = [19, 20, 21];
+  const slots: { when: string; label: string }[] = [];
+  for (let day = 0; day < 10 && slots.length < 6; day += 1) {
+    const date = new Date(from);
+    date.setDate(from.getDate() + day);
+    for (const hour of hours) {
+      date.setHours(hour, 0, 0, 0);
+      if (date.getTime() <= from.getTime() + 30 * 60000) continue;
+      const when = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hour)}:00`;
+      slots.push({ when, label: prettyWhen(when) });
+      if (slots.length >= 6) break;
     }
   }
-  return option.label.trim() || 'Un día';
+  return slots;
 }

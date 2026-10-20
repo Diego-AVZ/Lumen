@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { saveDraft } from '@/lib/drafts';
 import { haptic } from '@/lib/haptics';
 import { uid } from '@/lib/motion';
+import { DateSlots } from '@/cita/DateSlots';
 import { PriceTag } from '@/hub/PriceTag';
-import { CITA_PHRASES, blankCita, citaTitle } from '@/schema/cita';
+import { CITA_PHRASES, blankCita, citaTitle, nearbySlots } from '@/schema/cita';
 
 export function CitaCreate({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
@@ -13,10 +14,11 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
   const [fromName, setFromName] = useState('');
   const [question, setQuestion] = useState(CITA_PHRASES[0]);
   const [letter, setLetter] = useState('No hace falta que sea perfecto. Solo quiero verte.');
-  const [dates, setDates] = useState([
-    { id: uid('when'), label: 'Viernes por la noche', when: '' },
-    { id: uid('when'), label: 'Sábado a media tarde', when: '' },
-  ]);
+  const [dates, setDates] = useState(() =>
+    nearbySlots()
+      .slice(0, 2)
+      .map((slot) => ({ id: uid('when'), label: slot.label, when: slot.when })),
+  );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -127,31 +129,9 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
         <>
           <p className="mt-8 text-[12px] uppercase tracking-[0.22em] text-brass">04 · Los días</p>
           <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.8rem)] italic leading-[0.95]">Si dice que sí, ¿cuándo?</h1>
-          <ul className="mt-8 grid gap-3">
-            {dates.map((item, index) => (
-              <li key={item.id} className="rounded-[22px] bg-white p-4 ring-1 ring-black/10">
-                <input
-                  value={item.label}
-                  onChange={(e) => setDates(dates.map((row, i) => (i === index ? { ...row, label: e.target.value } : row)))}
-                  placeholder="Viernes por la noche"
-                  className="w-full bg-transparent font-display text-2xl italic outline-none"
-                />
-                <input
-                  type="datetime-local"
-                  value={item.when}
-                  onChange={(e) => setDates(dates.map((row, i) => (i === index ? { ...row, when: e.target.value } : row)))}
-                  className="mt-2 w-full bg-transparent text-[14px] text-inkwell/70 outline-none"
-                />
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            className="mt-4 text-[14px] text-brass"
-            onClick={() => setDates([...dates, { id: uid('when'), label: '', when: '' }])}
-          >
-            Otra fecha
-          </button>
+          <div className="mt-8">
+            <DateSlots dates={dates} onChange={setDates} />
+          </div>
           <div>
             <button type="button" disabled={saving} onClick={finish} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-40">
               {saving ? 'Creando…' : 'Crear el sobre'}

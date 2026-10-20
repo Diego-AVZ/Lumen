@@ -142,12 +142,24 @@ export function PublishDialog({
     <>
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#1b1612]/40 p-3 sm:place-items-center" onClick={onClose}>
       <div className="max-h-[92dvh] w-full max-w-lg overflow-auto rounded-[28px] bg-linen p-6 shadow-2xl sm:p-8" onClick={(e) => e.stopPropagation()}>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-brass">El enlace</p>
-        <h2 className="mt-2 font-display text-4xl italic leading-none">Para el móvil</h2>
+        <p className="text-[11px] uppercase tracking-[0.22em] text-brass">Enviar</p>
+        <h2 className="mt-2 font-display text-4xl italic leading-none">El enlace y la invitación</h2>
         <p className="mt-3 text-[15px] leading-relaxed text-inkwell/65">
-          Crear fue gratis. Publicar cobra {euros(quote.totalCents)}. Si ya pagaste y añadiste algo, solo falta la diferencia.
+          Publica el {isCita(doc) ? 'sobre' : 'regalo'} y baja un JPG o un PDF para mandarlo. El botón de la invitación abre este enlace.
         </p>
-        <ul className="mt-4 space-y-2 rounded-[22px] bg-white px-4 py-4 ring-1 ring-black/5">
+
+        <button type="button" onClick={() => setInvite(true)} className="mt-5 w-full rounded-[22px] bg-inkwell px-5 py-5 text-left text-linen">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-[#e8b86d]">JPG y PDF</span>
+          <span className="mt-1 block font-display text-3xl italic">Diseñar la invitación</span>
+          <span className="mt-1 block text-[14px] leading-relaxed text-linen/65">
+            Una tarjeta para enseñarla en el móvil o enviarla. El botón Ábrelo lleva al {isCita(doc) ? 'sobre' : 'universo'}.
+          </span>
+        </button>
+
+        <p className="mt-6 text-[13px] text-inkwell/50">
+          Crear fue gratis. Publicar cobra {euros(quote.totalCents)}. Si ya pagaste, solo falta la diferencia.
+        </p>
+        <ul className="mt-3 space-y-2 rounded-[22px] bg-white px-4 py-4 ring-1 ring-black/5">
           {quote.lines.map((line) => (
             <li key={line.id} className="flex items-baseline justify-between gap-3 text-[14px]">
               <span>
@@ -162,14 +174,6 @@ export function PublishDialog({
             <span>{due > 0 ? euros(due) : euros(quote.totalCents)}</span>
           </li>
         </ul>
-
-        <button type="button" onClick={() => setInvite(true)} className="mt-5 w-full rounded-[22px] bg-white px-5 py-4 text-left ring-1 ring-black/10">
-          <span className="text-[11px] uppercase tracking-[0.16em] text-brass">Compartir</span>
-          <span className="mt-1 block font-display text-3xl italic">Diseñar la invitación</span>
-          <span className="mt-1 block text-[14px] leading-relaxed text-inkwell/55">
-            JPG para enseñarlo en el móvil. PDF para enviarlo, con un botón que abre el regalo.
-          </span>
-        </button>
 
         <LinkBlock label={liveLink ? 'Enlace del regalo' : 'Borrador en vivo'} href={shareLink} copied={copied === shareLink} onCopy={() => void copy(shareLink)} />
         {liveLink && <LinkBlock label="Borrador en vivo" href={draftLink} copied={copied === draftLink} onCopy={() => void copy(draftLink)} />}

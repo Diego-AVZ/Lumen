@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DateAskPlayer } from '@/cita/DateAskPlayer';
+import { DateSlots } from '@/cita/DateSlots';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
 import { PriceTag } from '@/hub/PriceTag';
 import { isCita } from '@/schema/project';
 import { loadDraft, peekDraft, purgeProject, saveDraft } from '@/lib/drafts';
-import { uid } from '@/lib/motion';
 import { CITA_PHRASES, citaTitle, parseCita, type DateAskDocument } from '@/schema/cita';
 import { PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
@@ -120,49 +120,10 @@ export function DateAskStudio({ id }: { id: string }) {
               className="mt-2 w-full resize-none rounded-2xl bg-white px-4 py-3 text-[15px] outline-none ring-1 ring-black/10"
             />
           </label>
-          <div className="mt-6 flex items-center justify-between">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Fechas posibles</p>
-            <button
-              type="button"
-              className="text-[13px] text-brass"
-              onClick={() => edit({ dates: [...doc.dates, { id: uid('when'), label: '', when: '' }] })}
-            >
-              Añadir
-            </button>
+          <p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Fechas posibles</p>
+          <div className="mt-3">
+            <DateSlots dates={doc.dates} onChange={(dates) => edit({ dates })} />
           </div>
-          <ul className="mt-3 grid gap-3">
-            {doc.dates.map((item, index) => (
-              <li key={item.id} className="rounded-2xl bg-white p-3 ring-1 ring-black/10">
-                <input
-                  value={item.label}
-                  onChange={(e) => {
-                    const dates = doc.dates.map((row, i) => (i === index ? { ...row, label: e.target.value } : row));
-                    edit({ dates });
-                  }}
-                  placeholder="Viernes por la noche"
-                  className="w-full bg-transparent font-display text-xl italic outline-none"
-                />
-                <input
-                  type="datetime-local"
-                  value={item.when}
-                  onChange={(e) => {
-                    const dates = doc.dates.map((row, i) => (i === index ? { ...row, when: e.target.value } : row));
-                    edit({ dates });
-                  }}
-                  className="mt-2 w-full bg-transparent text-[14px] text-inkwell/70 outline-none"
-                />
-                {doc.dates.length > 1 && (
-                  <button
-                    type="button"
-                    className="mt-2 text-[12px] text-[#8a3d32]"
-                    onClick={() => edit({ dates: doc.dates.filter((row) => row.id !== item.id) })}
-                  >
-                    Quitar
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
         </aside>
       </div>
       {publishing && (

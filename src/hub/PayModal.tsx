@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { CHAINS, euros, type ChainId, type PayAsset, type PlanFamily } from '@/lib/plans';
-import { mockPay } from '@/lib/purchases';
+import { CHAINS, euros, type ChainId, type PayAsset, type PlanFamily, type PlanId } from '@/lib/plans';
+import { mockCheckout, mockPay } from '@/lib/purchases';
 
 type Rail = 'card' | 'crypto';
 type Phase = 'form' | 'confirm' | 'working' | 'done';
@@ -23,6 +23,7 @@ export function PayModal({
   cents,
   projectId,
   family,
+  credit,
   onClose,
   onPaid,
 }: {
@@ -30,6 +31,7 @@ export function PayModal({
   cents: number;
   projectId: string;
   family: PlanFamily;
+  credit?: PlanId;
   onClose: () => void;
   onPaid: () => void;
 }) {
@@ -86,15 +88,23 @@ export function PayModal({
       if (gone.current) return;
     }
     try {
-      const row = await mockPay({
-        projectId,
-        family,
-        cents,
-        rail,
-        asset: rail === 'crypto' ? asset : 'card',
-        network: rail === 'crypto' ? network : '',
-        wallet: rail === 'crypto' ? wallet ?? '' : '',
-      });
+      const row = credit
+        ? await mockCheckout({
+            plan: credit,
+            rail,
+            asset: rail === 'crypto' ? asset : 'card',
+            network: rail === 'crypto' ? network : '',
+            wallet: rail === 'crypto' ? wallet ?? '' : '',
+          })
+        : await mockPay({
+            projectId,
+            family,
+            cents,
+            rail,
+            asset: rail === 'crypto' ? asset : 'card',
+            network: rail === 'crypto' ? network : '',
+            wallet: rail === 'crypto' ? wallet ?? '' : '',
+          });
       if (gone.current) return;
       setReference(row.id.slice(0, 8));
       setPhase('done');
@@ -126,7 +136,7 @@ export function PayModal({
             </h2>
             <p className="mt-4 text-[16px] leading-relaxed text-inkwell/65">
               {euros(cents)} · pago de prueba. No se ha cobrado.
-              {reference ? ` Referencia ${reference}.` : ''} Ya puedes publicarlo.
+              {reference ? ` Referencia ${reference}.` : ''} {credit ? 'Queda libre para el siguiente envío.' : 'Ya puedes publicarlo.'}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <button type="button" onClick={onPaid} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen">
@@ -199,7 +209,9 @@ export function PayModal({
               </div>
               <p className="font-display text-3xl italic">{euros(cents)}</p>
             </div>
-            <p className="mt-4 text-[15px] leading-relaxed text-inkwell/60">Se cobra al publicar. Un pago de prueba: no sale dinero.</p>
+            <p className="mt-4 text-[15px] leading-relaxed text-inkwell/60">
+              {credit ? 'Queda como saldo. Se usa al publicar. Un pago de prueba: no sale dinero.' : 'Se cobra al publicar. Un pago de prueba: no sale dinero.'}
+            </p>
 
             <div className="mt-6 grid grid-cols-2 gap-2 rounded-full bg-white p-1 ring-1 ring-black/5">
               {([

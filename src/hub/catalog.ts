@@ -8,7 +8,7 @@ export const HUB_VISTAS: {
   accent?: boolean;
 }[] = [
   { id: 'proyectos', label: 'Mis proyectos', hint: 'Universos y lo que venga', mark: '✦' },
-  { id: 'plan', label: 'Plan', hint: 'Cómo se calcula el precio', mark: '◐' },
+  { id: 'plan', label: 'Plan', hint: 'Contratar un regalo', mark: '◐' },
   { id: 'uso', label: 'Uso', hint: 'Pagos y proyectos', mark: '▤' },
   { id: 'seguimiento', label: 'Seguimiento', hint: 'Regalos que ya viven', mark: '⌖' },
   { id: 'ideas', label: 'Ideas', hint: 'Por si te quedas en blanco', mark: '✎' },
