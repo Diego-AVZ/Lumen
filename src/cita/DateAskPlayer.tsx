@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { haptic } from '@/lib/haptics';
 import { pingVisit } from '@/lib/stats';
-import { formatDateOption, type DateAskDocument, type DateOption } from '@/schema/cita';
+import { formatDateOption, type CitaSeal, type DateAskDocument, type DateOption } from '@/schema/cita';
 
-const HINTS = ['Toca el corazón', 'Otra vez', 'El lacre cede', 'Sigue', 'Casi', 'Uno más'];
+const HINTS = ['Otra vez', 'El lacre cede', 'Sigue', 'Casi', 'Uno más'];
+const SEAL_HINT: Record<CitaSeal, string> = {
+  heart: 'Toca el corazón',
+  star: 'Toca la estrella',
+  bear: 'Toca el osito',
+  dog: 'Toca al perro',
+};
 const NO_LINES = ['No', '¿Seguro?', 'Mmm…', 'El otro', 'Ni se te ocurra', 'Nooo'];
 
 type Spark = { id: number; dx: string; dy: string };
@@ -173,9 +179,11 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
               {sparks.map((spark) => (
                 <span key={spark.id} className="cita-burst" style={{ left: '50%', top: '42%', '--dx': spark.dx, '--dy': spark.dy } as React.CSSProperties} />
               ))}
+              {doc.envelope.trim() && <p className="cita-envelope-line">{doc.envelope.trim()}</p>}
               <button
                 type="button"
                 className={`cita-seal ${clicks > 0 ? 'cita-seal-hot' : ''}`}
+                data-seal={doc.seal}
                 onClick={tapHeart}
                 style={{
                   opacity: opened ? 0 : 1,
@@ -184,12 +192,12 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
                 }}
                 aria-label="Abrir el sobre"
               >
-                <Heart />
+                <SealMark id={doc.seal} />
                 <span className="cita-seal-ring" />
               </button>
             </div>
           </div>
-          <p className="mt-8 text-[14px] text-[#f6ead8]/60">{opened ? 'Se abre…' : HINTS[Math.min(clicks, HINTS.length - 1)]}</p>
+          <p className="mt-8 text-[14px] text-[#f6ead8]/60">{opened ? 'Se abre…' : clicks === 0 ? SEAL_HINT[doc.seal] : HINTS[Math.min(clicks - 1, HINTS.length - 1)]}</p>
           <div className="mt-3 flex gap-1.5">
             {Array.from({ length: 6 }, (_, i) => (
               <span key={i} className={`h-1.5 w-6 rounded-full transition ${i < clicks ? 'bg-[#e8b86d]' : 'bg-white/15'}`} />
@@ -247,7 +255,39 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
   );
 }
 
-function Heart() {
+function SealMark({ id }: { id: CitaSeal }) {
+  if (id === 'star') {
+    return (
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 2.4 14.7 8.8 21.6 9.4 16.4 14l1.6 6.7L12 17.6 6 20.7 7.6 14 2.4 9.4 9.3 8.8 12 2.4z" />
+      </svg>
+    );
+  }
+  if (id === 'bear') {
+    return (
+      <svg width="30" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="6.2" cy="6.2" r="3.1" />
+        <circle cx="17.8" cy="6.2" r="3.1" />
+        <circle cx="12" cy="13.2" r="7.2" />
+        <circle cx="9.4" cy="12.4" r="0.9" fill="#5c3318" />
+        <circle cx="14.6" cy="12.4" r="0.9" fill="#5c3318" />
+        <ellipse cx="12" cy="14.6" rx="1.3" ry="0.9" fill="#5c3318" />
+      </svg>
+    );
+  }
+  if (id === 'dog') {
+    return (
+      <svg width="34" height="22" viewBox="0 0 34 22" fill="currentColor" aria-hidden="true">
+        <ellipse cx="20" cy="11" rx="10" ry="5.2" />
+        <circle cx="8.5" cy="9.2" r="4.3" />
+        <ellipse cx="4.2" cy="11.4" rx="2.2" ry="1.3" transform="rotate(-20 4.2 11.4)" />
+        <path d="M6.2 6.2c-.2-2.4 1.2-3.6 2.4-2.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="7.2" cy="8.6" r="0.55" fill="#3a2418" />
+        <path d="M13.5 15.2v3.2M18.2 15.6v3.4M23.2 15.4v3.1M27.4 14.6v2.8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M29.2 9.2c2.4.2 3.6 1.2 3.2 2.2-.6 1.4-2.8.8-3.4-.2" />
+      </svg>
+    );
+  }
   return (
     <svg width="28" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M12 21s-6.2-4.35-9.2-8.22C.7 10.2.9 6.7 3.4 4.9 5.4 3.4 8 3.7 12 7.2c4-3.5 6.6-3.8 8.6-2.3 2.5 1.8 2.7 5.3.6 7.88C18.2 16.65 12 21 12 21z" />

@@ -1,0 +1,109 @@
+{
+  "nombre": "Lumen",
+  "paraQueSirveEsteArchivo": "Retrato del producto para otra persona u otra IA. Describe la idea, lo que ya se puede hacer y el recorrido desde quien crea el regalo hasta quien lo abre. No es un manual de código ni incluye claves.",
+  "idea": "Lumen es un estudio para hacer regalos que se abren en el móvil. No es una tarjeta genérica ni un PDF muerto. Quien lo crea escribe como si se lo contara a esa persona, lo ve en tiempo real y, al publicarlo, manda un enlace, un QR o una invitación. Quien lo recibe no se registra: abre el enlace y el regalo se explora.",
+  "voz": "El texto del producto va en español, hablado y cercano. Frases cortas, como se lo contarías a alguien. Nada de tono de software ni de catálogo de funciones.",
+  "paraQuien": {
+    "creador": "La persona que hace el regalo. Entra con Google o con un enlace al correo. Los proyectos viven en su cuenta.",
+    "quienRecibe": "Abre /u/enlace en el móvil. No necesita cuenta, salvo en la lista de deseos: ahí las dos personas entran con su correo porque las dos escriben.",
+    "parejaDeLaLista": "En la lista de deseos, el otro correo ve el proyecto en Mis proyectos en cuanto está publicado, si entra con ese mismo correo."
+  },
+  "sitio": {
+    "publico": "https://diego-avz.github.io/Lumen/",
+    "local": "http://localhost:5180",
+    "codigo": "valeria-creator",
+    "stack": "React, Vite, TypeScript, Tailwind, React Router, Supabase (cuenta, base de datos, login). El pago de ahora es un simulacro guardado en Supabase, no un cobro real de Stripe."
+  },
+  "recorrido": [
+    {
+      "paso": "1. Llegar",
+      "donde": "/",
+      "quePasa": "La portada cuenta la idea: un regalo que se explora. Ver opciones baja a los tipos de proyecto. Crear un proyecto lleva al estudio."
+    },
+    {
+      "paso": "2. Entrar",
+      "donde": "/crear",
+      "quePasa": "Sin cuenta no se crea nada. Google o un enlace al correo. El enlace solo sirve si se abre en esa bandeja. Google, si el correo ya existía por el enlace, no se engancha solo: primero se entra con el enlace y, ya dentro, se conecta Google. Así nadie entra solo con saber la dirección."
+    },
+    {
+      "paso": "3. Elegir el regalo",
+      "donde": "/crear/nuevo",
+      "quePasa": "Se elige plantilla. Crear es gratis. El precio se ve mientras se hace y se cobra al publicar, la diferencia si ya había saldo."
+    },
+    {
+      "paso": "4. Hacerlo",
+      "donde": "/crear/:id",
+      "quePasa": "El estudio. A un lado se escribe, al otro se ve el móvil. Se puede guardar, volver, duplicar y borrar. El borrador también se puede previsualizar en /p/:id, solo para quien es dueño."
+    },
+    {
+      "paso": "5. Ver el precio",
+      "donde": "chip en el estudio y en el diálogo de enviar",
+      "quePasa": "El precio sale de src/lib/pricing.ts. Hay una base y, si te pasas de fotos, texto, fechas u otros extras, suma. La pantalla Plan vende saldos por adelantado (cita, cita pro, plantilla basic, plantilla pro). Ese saldo se aplica al publicar. Lo que sobre de ese proyecto se paga entonces."
+    },
+    {
+      "paso": "6. Pagar y publicar",
+      "donde": "diálogo Enviar",
+      "quePasa": "Un botón, Pagar y publicar, si falta dinero. Si ya está cubierto, Publicar o Actualizar. Después se puede seguir editando y volver a publicar sin cobrar, mientras el nuevo precio no pase de lo ya pagado para ese proyecto."
+    },
+    {
+      "paso": "7. Invitar",
+      "donde": "diseño de invitación, sin tener que pagar antes",
+      "quePasa": "Una lámina para enseñar en el móvil (JPG) y un PDF para enviar. Fondo, degradado, motivos o sin motivos. El botón y el QR son enlaces de verdad al regalo. El QR va siempre oscuro sobre blanco para que se lea, también si el papel es de noche. Se descarga y se puede mandar por WhatsApp o correo."
+    },
+    {
+      "paso": "8. Abrirlo",
+      "donde": "/u/:enlace",
+      "quePasa": "Quien recibe abre el enlace. Si hay contraseña, una palabra. El regalo ocupa el móvil. Lumen anota que se abrió y cuánto estuvo, sin contar el rato con el teléfono cerrado."
+    },
+    {
+      "paso": "9. Mirar qué pasó",
+      "donde": "Seguimiento, dentro de /crear",
+      "quePasa": "El creador ve si se abrió, cuántas veces y cuánto estuvo. No es una vigilancia del teléfono: es la visita al regalo."
+    }
+  ],
+  "proyectosQueYaExisten": {
+    "universo": {
+      "queEs": "Un cielo con su nombre en el centro. Cada cosa es una estrella y se abre distinto.",
+      "estrellas": [
+        "Historia: capítulos que se pasan de lado, y dentro los momentos bajan. Se puede pegar un enlace de Spotify.",
+        "Lista: deseos que orbitan hasta un día y entonces caen.",
+        "Carta: una página para leer despacio, con firma y, si se quiere, una nota de voz.",
+        "Notas: tarjetas cortas, de un día concreto.",
+        "Archivo: polaroids, foto y una frase.",
+        "Secreto: no se abre sin una frase que solo esa persona sabe.",
+        "Lugares: sitios con lo que pasó ahí, en lista y en mapa."
+      ],
+      "precio": "Base 12,95 €. Entran 5 fotos, 1 audio, 10 lugares y 2500 caracteres. Música, secreto y contraseña son extras."
+    },
+    "cita": {
+      "queEs": "Un sobre cerrado para pedir una cita.",
+      "comoSeAbre": "Hay que tocar el corazón seis veces. El no se escurre. El sí se queda, con el día elegido.",
+      "queLleva": "Su nombre, el tuyo, una pregunta (de las hechas o una tuya), una nota corta y dos o tres fechas. La fecha se elige en tardes próximas o con un día y una hora entre las 18:00 y las 22:00. El texto que ve la otra persona sale de esa fecha, para que no diga una cosa y el reloj otra.",
+      "precio": "Base 2,95 €. Entran 400 caracteres y 2 fechas. La pregunta escrita a mano es un extra."
+    },
+    "listaDeDeseos": {
+      "queEs": "Una lista viva entre dos. No es un regalo que se mira una vez: los dos van dejando planes.",
+      "queSeAnade": "Un plan con nombre, una línea, una duración (una tarde, un día, un fin de semana, vacaciones) y un aire (tranquilo, aventura, viaje, en casa, para comer). Se puede cambiar después.",
+      "visibleUOculto": "Visible lo ven los dos desde que se deja. Oculto lo ve quien lo escribió. El otro solo lo ve cuando la ruleta lo descubre.",
+      "ruleta": "Se elige cada cuánto se puede girar: cada día, cada semana, cada dos semanas o cada mes. Los dos giran con la misma duración y los mismos filtros y sale el mismo plan. Antes de mostrarlo se mira si ese plazo ya tiene un plan guardado. Si no, se guarda uno y luego los dos leen ese. Así no salen dos resultados distintos. El que sale pasa a Por hacer hasta que se marca como vivido. Se puede ordenar y filtrar la lista.",
+      "cuandoGiraDeVerdad": "Solo si la lista está publicada y pagada. Antes hay una ruleta de ensayo, con planes de mentira, que no se guarda.",
+      "precio": "3,50 € la lista y 1,50 € de mantenimiento, 30 días desde que se publica. Si el mantenimiento se para, la ruleta pide renovarlo. Los importes viven en pricing.ts."
+    }
+  },
+  "proyectosAnunciadosPeroNoHechos": ["Carta larga", "Álbum", "Mapa de lugares"],
+  "pantallasDelCreador": {
+    "misProyectos": "Lo suyo y, si le invitaron, la lista de deseos publicada a su correo.",
+    "plan": "Cuatro saldos para comprar por adelantado: Cita 2,95 €, Cita pro 4,95 €, Plantilla basic 12,95 €, Plantilla pro 19,95 €. El pago de esta pantalla deja saldo. No es la tarifa detallada del estudio.",
+    "uso": "Qué se ha pagado y en qué proyecto.",
+    "seguimiento": "Aperturas y tiempo de los regalos publicados.",
+    "ideas": "Frases por si alguien se queda en blanco.",
+    "instrucciones": "Cómo se construye, en cuatro pasos: crear, ver, ajustar, publicar."
+  },
+  "logicaDeDinero": "Crear y diseñar la invitación no cobran. El precio se calcula en el cliente según lo que lleva el regalo. Al publicar se mira cuánto se ha pagado ya hacia ese proyecto. Se cobra la diferencia. Un saldo viejo de la misma familia (cita o plantilla) se aplica solo hasta cubrir el presupuesto. Lista de deseos se cobra aparte, no con el saldo de un universo.",
+  "loQueNoEs": [
+    "No es una red social.",
+    "No lee el teléfono de la otra persona. Solo la visita al regalo.",
+    "El cobro de hoy es de prueba. Queda anotado, no pasa por un banco de verdad.",
+    "Carta, álbum y mapa se ven en la portada para enseñar la idea. Todavía no se crean."
+  ]
+}

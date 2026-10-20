@@ -144,7 +144,7 @@ function build(book: PriceBook, counts: Record<string, number>, flags: Record<st
 function citaCounts(doc: DateAskDocument) {
   const dates = doc.dates.filter((item) => item.label.trim() || item.when).length;
   return {
-    chars: lengthOf(doc.forName, doc.fromName, doc.question, doc.letter, ...doc.dates.map((item) => item.label)),
+    chars: lengthOf(doc.forName, doc.fromName, doc.question, doc.letter, doc.envelope, ...doc.dates.map((item) => item.label)),
     dates,
   };
 }

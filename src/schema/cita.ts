@@ -11,6 +11,19 @@ export const CITA_PHRASES = [
   '¿Hacemos un plan, tú y yo?',
 ];
 
+export const CITA_SEALS = [
+  { id: 'heart', label: 'Corazón' },
+  { id: 'star', label: 'Estrella' },
+  { id: 'bear', label: 'Osito' },
+  { id: 'dog', label: 'Salchicha' },
+] as const;
+
+export type CitaSeal = (typeof CITA_SEALS)[number]['id'];
+
+export function isCitaSeal(value: string): value is CitaSeal {
+  return CITA_SEALS.some((item) => item.id === value);
+}
+
 export type DateOption = {
   id: string;
   label: string;
@@ -25,6 +38,8 @@ export type DateAskDocument = {
   fromName: string;
   question: string;
   letter: string;
+  seal: CitaSeal;
+  envelope: string;
   dates: DateOption[];
 };
 
@@ -50,6 +65,8 @@ export function blankCita(): DateAskDocument {
     fromName: '',
     question: CITA_PHRASES[0],
     letter: 'No hace falta que sea perfecto. Solo quiero verte.',
+    seal: 'heart',
+    envelope: '',
     dates: nearbySlots()
       .slice(0, 2)
       .map((slot) => ({ id: uid('when'), label: slot.label, when: slot.when })),
@@ -91,6 +108,11 @@ export function parseCita(input: unknown): DateAskDocument {
     fromName: str(raw.fromName),
     question: str(raw.question, CITA_PHRASES[0]),
     letter: str(raw.letter, 'No hace falta que sea perfecto. Solo quiero verte.'),
+    seal: (() => {
+      const seal = str(raw.seal);
+      return isCitaSeal(seal) ? seal : 'heart';
+    })(),
+    envelope: str(raw.envelope).slice(0, 42),
     dates: dates.map((item) => ({
       id: str(item?.id) || uid('when'),
       label: str(item?.label),

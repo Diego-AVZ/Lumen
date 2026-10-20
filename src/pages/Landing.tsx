@@ -147,7 +147,7 @@ function ProjectStory({ id, cita }: { id: TemplateId; cita: DateAskDocument }) {
       kicker: 'El sobre',
       title: 'Pedir cita',
       line: 'Se abre a toques, no de un tirón.',
-      body: 'Le dejas su nombre y el tuyo. Una pregunta —de las que ya están, o la escribes tú—. Una nota corta, de las que se leen antes de contestar. Y dos o tres horas, por si dice que sí: el viernes a las nueve, el sábado por la tarde. El corazón hay que tocarlo seis veces. El no se escurre. El sí se queda, con el día que eligió.',
+      body: 'Le dejas su nombre y el tuyo. Una pregunta —de las que ya están, o la escribes tú—. Una nota corta, de las que se leen antes de contestar. Y dos o tres horas, por si dice que sí: el viernes a las nueve, el sábado por la tarde. El sello hay que tocarlo seis veces. El no se escurre. El sí se queda, con el día que eligió.',
     },
     carta: {
       kicker: 'La página',
@@ -274,6 +274,7 @@ export function Landing() {
     doc.fromName = 'Alex';
     doc.question = '¿Quieres venir conmigo a cenar?';
     doc.letter = 'No hace falta que sea perfecto. Solo quiero verte.';
+    doc.envelope = 'Ábrelo cuando puedas';
     return doc;
   }, []);
   const scenes = useMemo(() => {

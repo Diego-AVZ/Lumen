@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DateAskPlayer } from '@/cita/DateAskPlayer';
 import { DateSlots } from '@/cita/DateSlots';
@@ -6,7 +6,8 @@ import { ConfirmDelete } from '@/hub/ConfirmDelete';
 import { PriceTag } from '@/hub/PriceTag';
 import { isCita } from '@/schema/project';
 import { loadDraft, peekDraft, purgeProject, saveDraft } from '@/lib/drafts';
-import { CITA_PHRASES, citaTitle, parseCita, type DateAskDocument } from '@/schema/cita';
+import { EmojiBar, insertEmoji } from '@/cita/EmojiBar';
+import { CITA_PHRASES, CITA_SEALS, citaTitle, parseCita, type DateAskDocument } from '@/schema/cita';
 import { PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
 
@@ -22,6 +23,9 @@ export function DateAskStudio({ id }: { id: string }) {
   const [missing, setMissing] = useState(false);
 
   const ready = useRef(false);
+  const questionRef = useRef<HTMLTextAreaElement>(null);
+  const letterRef = useRef<HTMLTextAreaElement>(null);
+  const envelopeRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     ready.current = false;
   }, [id]);
@@ -55,6 +59,10 @@ export function DateAskStudio({ id }: { id: string }) {
   }
 
   const edit = (patch: Partial<DateAskDocument>) => setDoc({ ...doc, ...patch });
+  const sprinkle = (field: 'question' | 'letter' | 'envelope', ref: RefObject<HTMLTextAreaElement | HTMLInputElement | null>, emoji: string) => {
+    const next = insertEmoji(doc[field], emoji, ref.current);
+    edit({ [field]: field === 'envelope' ? next.slice(0, 42) : next });
+  };
 
   return (
     <div className="flex h-dvh flex-col bg-linen text-inkwell">
@@ -106,19 +114,48 @@ export function DateAskStudio({ id }: { id: string }) {
             ))}
           </div>
           <textarea
+            ref={questionRef}
             value={doc.question}
             onChange={(e) => edit({ question: e.target.value })}
             rows={2}
             className="mt-3 w-full resize-none rounded-2xl bg-white px-4 py-3 text-[15px] outline-none ring-1 ring-black/10"
           />
+          <EmojiBar onPick={(emoji) => sprinkle('question', questionRef, emoji)} />
           <label className="mt-6 block">
             <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">La nota</span>
             <textarea
+              ref={letterRef}
               value={doc.letter}
               onChange={(e) => edit({ letter: e.target.value })}
               rows={4}
               className="mt-2 w-full resize-none rounded-2xl bg-white px-4 py-3 text-[15px] outline-none ring-1 ring-black/10"
             />
+            <EmojiBar onPick={(emoji) => sprinkle('letter', letterRef, emoji)} />
+          </label>
+          <p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">El sello</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {CITA_SEALS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => edit({ seal: item.id })}
+                className={`rounded-full px-3 py-1.5 text-[13px] ${doc.seal === item.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <label className="mt-5 block">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Una línea en el sobre</span>
+            <input
+              ref={envelopeRef}
+              value={doc.envelope}
+              maxLength={42}
+              onChange={(e) => edit({ envelope: e.target.value })}
+              placeholder="Ábrelo cuando puedas"
+              className="mt-2 w-full rounded-2xl bg-white px-4 py-3 text-[15px] outline-none ring-1 ring-black/10"
+            />
+            <EmojiBar onPick={(emoji) => sprinkle('envelope', envelopeRef, emoji)} />
           </label>
           <p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Fechas posibles</p>
           <div className="mt-3">

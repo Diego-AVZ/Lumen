@@ -5,7 +5,8 @@ import { haptic } from '@/lib/haptics';
 import { uid } from '@/lib/motion';
 import { DateSlots } from '@/cita/DateSlots';
 import { PriceTag } from '@/hub/PriceTag';
-import { CITA_PHRASES, blankCita, citaTitle, nearbySlots } from '@/schema/cita';
+import { EmojiBar, insertEmoji } from '@/cita/EmojiBar';
+import { CITA_PHRASES, CITA_SEALS, blankCita, citaTitle, nearbySlots, type CitaSeal } from '@/schema/cita';
 
 export function CitaCreate({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
@@ -14,6 +15,11 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
   const [fromName, setFromName] = useState('');
   const [question, setQuestion] = useState(CITA_PHRASES[0]);
   const [letter, setLetter] = useState('No hace falta que sea perfecto. Solo quiero verte.');
+  const [seal, setSeal] = useState<CitaSeal>('heart');
+  const [envelope, setEnvelope] = useState('');
+  const questionRef = useRef<HTMLTextAreaElement>(null);
+  const letterRef = useRef<HTMLTextAreaElement>(null);
+  const envelopeRef = useRef<HTMLInputElement>(null);
   const [dates, setDates] = useState(() =>
     nearbySlots()
       .slice(0, 2)
@@ -29,10 +35,12 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
     doc.fromName = fromName.trim();
     doc.question = question.trim() || CITA_PHRASES[0];
     doc.letter = letter.trim();
+    doc.seal = seal;
+    doc.envelope = envelope.trim();
     doc.dates = dates.filter((item) => item.label.trim() || item.when);
     if (doc.dates.length === 0) doc.dates = [{ id: uid('when'), label: 'Cuando quieras', when: '' }];
     return doc;
-  }, [forName, fromName, question, letter, dates]);
+  }, [forName, fromName, question, letter, seal, envelope, dates]);
   const finish = () => {
     if (once.current || saving) return;
     once.current = true;
@@ -101,7 +109,8 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
               </button>
             ))}
           </div>
-          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} className="mt-6 w-full resize-none rounded-[22px] bg-white px-4 py-3 text-[17px] outline-none ring-1 ring-black/10" />
+          <textarea ref={questionRef} value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} className="mt-6 w-full resize-none rounded-[22px] bg-white px-4 py-3 text-[17px] outline-none ring-1 ring-black/10" />
+          <EmojiBar onPick={(emoji) => setQuestion(insertEmoji(question, emoji, questionRef.current))} />
           <button type="button" disabled={!question.trim()} onClick={() => setStep(2)} className="mt-8 rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-30">
             Seguir
           </button>
@@ -113,7 +122,33 @@ export function CitaCreate({ onBack }: { onBack: () => void }) {
           <p className="mt-8 text-[12px] uppercase tracking-[0.22em] text-brass">03 · La nota</p>
           <h1 className="mt-3 font-display text-[clamp(2.4rem,5vw,3.8rem)] italic leading-[0.95]">Algo más, si quieres</h1>
           <p className="mt-3 text-[16px] text-inkwell/55">Va dentro del sobre, encima de la pregunta.</p>
-          <textarea autoFocus value={letter} onChange={(e) => setLetter(e.target.value)} rows={5} className="mt-8 w-full resize-none rounded-[22px] bg-white px-4 py-3 text-[17px] leading-relaxed outline-none ring-1 ring-black/10" />
+          <textarea ref={letterRef} autoFocus value={letter} onChange={(e) => setLetter(e.target.value)} rows={5} className="mt-8 w-full resize-none rounded-[22px] bg-white px-4 py-3 text-[17px] leading-relaxed outline-none ring-1 ring-black/10" />
+          <EmojiBar onPick={(emoji) => setLetter(insertEmoji(letter, emoji, letterRef.current))} />
+          <p className="mt-8 text-[12px] uppercase tracking-[0.16em] text-inkwell/40">El sello</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {CITA_SEALS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSeal(item.id)}
+                className={`rounded-full px-4 py-2 text-[14px] ${seal === item.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <label className="mt-6 block">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Una línea en el sobre</span>
+            <input
+              ref={envelopeRef}
+              value={envelope}
+              maxLength={42}
+              onChange={(e) => setEnvelope(e.target.value)}
+              placeholder="Ábrelo cuando puedas"
+              className="mt-2 w-full rounded-[22px] bg-white px-4 py-3 text-[16px] outline-none ring-1 ring-black/10"
+            />
+            <EmojiBar onPick={(emoji) => setEnvelope(insertEmoji(envelope, emoji, envelopeRef.current).slice(0, 42))} />
+          </label>
           <div className="mt-8 flex gap-4">
             <button type="button" onClick={() => setStep(3)} className="rounded-full bg-inkwell px-6 py-3 text-linen">
               Seguir

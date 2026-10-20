@@ -37,7 +37,7 @@ export const TEMPLATES = [
     id: 'cita',
     name: 'Pedir cita',
     tag: 'Lista ahora',
-    line: 'Un sobre cerrado. Seis toques en el corazón, una carta y un sí o un no que no se deja pillar.',
+    line: 'Un sobre cerrado. Seis toques en el sello, una carta y un sí o un no que no se deja pillar.',
     available: true,
     sky: 'linear-gradient(165deg, #4a1828 0%, #1a0c12 48%, #0c0708 100%)',
   },

@@ -328,6 +328,38 @@ button {
   transition: transform 0.25s ease, opacity 0.4s ease;
 }
 
+.cita-seal[data-seal='star'] {
+  background: radial-gradient(circle at 35% 30%, #f2d7a2, #c4924a 58%, #8a6232);
+  box-shadow: 0 10px 22px rgba(90, 60, 20, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.cita-seal[data-seal='bear'] {
+  background: radial-gradient(circle at 35% 30%, #f0c48a, #c9844a 58%, #8a4e28);
+  box-shadow: 0 10px 22px rgba(90, 50, 20, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.cita-seal[data-seal='dog'] {
+  background: radial-gradient(circle at 35% 30%, #e7c39a, #a56b45 58%, #6e4630);
+  box-shadow: 0 10px 22px rgba(70, 40, 24, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.cita-envelope-line {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 16px;
+  z-index: 5;
+  margin: 0;
+  text-align: center;
+  font-family: Fraunces, Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.15;
+  color: #3a2418;
+  text-shadow: 0 1px 0 rgba(255, 244, 228, 0.35);
+  pointer-events: none;
+}
+
 .cita-seal:active { transform: scale(0.92); }
 
 .cita-seal-ring {

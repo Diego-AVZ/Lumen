@@ -20,7 +20,7 @@ export const PLANS: PlanOffer[] = [
     name: 'Cita',
     priceCents: 295,
     line: 'El sobre, como está ahora.',
-    points: ['Seis toques y el corazón', 'Una carta', 'Un sí, un no y unas fechas'],
+    points: ['Seis toques y el sello', 'Una carta', 'Un sí, un no y unas fechas'],
   },
   {
     id: 'cita_pro',
