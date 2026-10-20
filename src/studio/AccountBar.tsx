@@ -3,6 +3,7 @@ import { gmailInbox, listMine, sendMagicLink, signInWithGoogle, signOut, type Cl
 import { purgeProject } from '@/lib/drafts';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
 import { WaitMark } from '@/hub/WaitMark';
+import { explainAuthError, takeAuthError } from '@/bootPath';
 import { useSession } from '@/lib/session';
 import { cloudEnabled } from '@/lib/supabase';
 
@@ -16,7 +17,7 @@ export function AccountBar({
   const { user } = useSession();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => explainAuthError(takeAuthError()));
   const [busy, setBusy] = useState<'google' | 'email' | 'out' | 'del' | null>(null);
   const [mine, setMine] = useState<CloudUniverse[] | null>(null);
   const [pending, setPending] = useState<CloudUniverse | null>(null);
