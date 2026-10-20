@@ -357,7 +357,7 @@ grant execute on function public.my_gift_stats() to authenticated, anon;
 create table if not exists public.purchases (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles (id) on delete cascade,
-  plan text not null check (plan in ('cita', 'cita_pro', 'plantilla', 'plantilla_pro')),
+  plan text not null check (plan in ('cita', 'cita_pro', 'plantilla', 'plantilla_pro', 'deseos')),
   amount_cents integer not null check (amount_cents > 0),
   currency text not null default 'eur',
   rail text not null check (rail in ('card', 'crypto')),
@@ -546,6 +546,8 @@ begin
     plan := 'cita';
   elsif p_family = 'plantilla' then
     plan := 'plantilla';
+  elsif p_family = 'deseos' then
+    plan := 'deseos';
   else
     raise exception 'Ese regalo no se cobra.';
   end if;
@@ -580,3 +582,325 @@ $$;
 
 revoke all on function public.mock_pay(text, text, integer, text, text, text, text) from public, anon;
 grant execute on function public.mock_pay(text, text, integer, text, text, text, text) to authenticated;
+
+-- Lista de deseos. Dos cuentas escriben; la ruleta guarda un solo resultado por plazo y filtro.
+alter table public.purchases drop constraint if exists purchases_plan_check;
+alter table public.purchases add constraint purchases_plan_check
+  check (plan in ('cita', 'cita_pro', 'plantilla', 'plantilla_pro', 'deseos'));
+
+create table if not exists public.wish_members (
+  project_id text not null,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  role text not null check (role in ('owner', 'partner')),
+  primary key (project_id, user_id)
+);
+
+create table if not exists public.wish_items (
+  id uuid primary key default gen_random_uuid(),
+  project_id text not null,
+  author_id uuid not null,
+  title text not null,
+  note text not null default '',
+  span text not null check (span in ('tarde', 'dia', 'finde', 'vacaciones')),
+  moods text[] not null default '{}',
+  enjoyed_at timestamptz,
+  rank bigint not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists wish_items_project_idx on public.wish_items (project_id, rank desc);
+
+create table if not exists public.wish_draws (
+  id uuid primary key default gen_random_uuid(),
+  project_id text not null,
+  round_key text not null,
+  wish_id uuid not null references public.wish_items (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (project_id, round_key)
+);
+
+alter table public.wish_members enable row level security;
+alter table public.wish_items enable row level security;
+alter table public.wish_draws enable row level security;
+
+create or replace function public.wish_enter(p_project text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  row public.universes;
+  mail text;
+begin
+  if uid is null then
+    raise exception 'Entra en la cuenta.';
+  end if;
+  select * into row from public.universes where local_id = p_project order by updated_at desc limit 1;
+  if not found then
+    raise exception 'No encuentro esa lista.';
+  end if;
+  insert into public.profiles (id) values (uid) on conflict (id) do nothing;
+  if row.owner_id = uid then
+    insert into public.wish_members (project_id, user_id, role)
+    values (p_project, uid, 'owner')
+    on conflict (project_id, user_id) do update set role = 'owner';
+    return;
+  end if;
+  select lower(email) into mail from auth.users where id = uid;
+  if mail is not null and mail = lower(btrim(coalesce(row.document->>'partnerEmail', ''))) and mail <> '' then
+    insert into public.wish_members (project_id, user_id, role)
+    values (p_project, uid, 'partner')
+    on conflict (project_id, user_id) do update set role = 'partner';
+    return;
+  end if;
+  if exists (select 1 from public.wish_members where project_id = p_project and user_id = uid) then
+    return;
+  end if;
+  raise exception 'Esta lista no es tuya.';
+end;
+$$;
+
+create or replace function public.wish_board(p_project text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.wish_enter(p_project);
+  return jsonb_build_object(
+    'items', coalesce((
+      select jsonb_agg(to_jsonb(w) || jsonb_build_object(
+        'author', split_part(coalesce(u.email, ''), '@', 1)
+      ) order by w.rank desc)
+      from public.wish_items w
+      left join auth.users u on u.id = w.author_id
+      where w.project_id = p_project
+    ), '[]'::jsonb),
+    'draws', coalesce((
+      select jsonb_agg(jsonb_build_object('round_key', d.round_key, 'wish_id', d.wish_id, 'created_at', d.created_at) order by d.created_at desc)
+      from public.wish_draws d
+      where d.project_id = p_project
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+create or replace function public.wish_add(
+  p_project text,
+  p_title text,
+  p_note text,
+  p_span text,
+  p_moods text[]
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  made uuid;
+begin
+  perform public.wish_enter(p_project);
+  if btrim(coalesce(p_title, '')) = '' then
+    raise exception 'El plan necesita un nombre.';
+  end if;
+  if p_span not in ('tarde', 'dia', 'finde', 'vacaciones') then
+    raise exception 'Esa duración no vale.';
+  end if;
+  insert into public.wish_items (project_id, author_id, title, note, span, moods, rank)
+  values (
+    p_project,
+    uid,
+    left(btrim(p_title), 140),
+    left(btrim(coalesce(p_note, '')), 280),
+    p_span,
+    coalesce(p_moods, '{}'),
+    floor(extract(epoch from now()) * 1000)::bigint
+  )
+  returning id into made;
+  return made;
+end;
+$$;
+
+create or replace function public.wish_enjoy(p_project text, p_id uuid, p_enjoyed boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.wish_enter(p_project);
+  update public.wish_items
+  set enjoyed_at = case when p_enjoyed then now() else null end
+  where id = p_id and project_id = p_project;
+end;
+$$;
+
+create or replace function public.wish_move(p_project text, p_id uuid, p_dir integer)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current bigint;
+  neighbor uuid;
+  neighbor_rank bigint;
+begin
+  perform public.wish_enter(p_project);
+  select rank into current from public.wish_items where id = p_id and project_id = p_project;
+  if current is null then
+    return;
+  end if;
+  if p_dir > 0 then
+    select id, rank into neighbor, neighbor_rank
+    from public.wish_items
+    where project_id = p_project and rank > current
+    order by rank asc
+    limit 1;
+  else
+    select id, rank into neighbor, neighbor_rank
+    from public.wish_items
+    where project_id = p_project and rank < current
+    order by rank desc
+    limit 1;
+  end if;
+  if neighbor is null then
+    return;
+  end if;
+  update public.wish_items set rank = neighbor_rank where id = p_id;
+  update public.wish_items set rank = current where id = neighbor;
+end;
+$$;
+
+create or replace function public.wish_spin(p_project text, p_span text, p_moods text[])
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  every_days integer;
+  until_at text;
+  period text;
+  filter text;
+  round text;
+  picked uuid;
+  inserted uuid;
+  wish jsonb;
+begin
+  perform public.wish_enter(p_project);
+  select coalesce(nullif(document->>'everyDays', '')::integer, 7), nullif(document->>'maintainedUntil', '')
+    into every_days, until_at
+  from public.universes
+  where local_id = p_project
+  order by updated_at desc
+  limit 1;
+  if every_days is null or every_days < 1 then
+    every_days := 7;
+  end if;
+  if until_at is not null and until_at::timestamptz <= now() then
+    raise exception 'El mantenimiento está parado.';
+  end if;
+  period := floor(extract(epoch from now()) / (every_days * 86400))::text;
+  filter := p_span || ':' || coalesce((
+    select string_agg(mood, ',' order by mood)
+    from unnest(coalesce(p_moods, '{}'::text[])) as mood
+  ), '');
+  round := period || '|' || filter;
+
+  select wish_id into picked
+  from public.wish_draws
+  where project_id = p_project and round_key = round;
+
+  if picked is null then
+    select id into picked
+    from public.wish_items
+    where project_id = p_project
+      and span = p_span
+      and enjoyed_at is null
+      and (cardinality(coalesce(p_moods, '{}'::text[])) = 0 or moods && coalesce(p_moods, '{}'::text[]))
+    order by random()
+    limit 1;
+    if picked is null then
+      raise exception 'Con eso no hay ningún plan.';
+    end if;
+    insert into public.wish_draws (project_id, round_key, wish_id)
+    values (p_project, round, picked)
+    on conflict (project_id, round_key) do nothing
+    returning id into inserted;
+  end if;
+
+  select to_jsonb(w) || jsonb_build_object('author', split_part(coalesce(u.email, ''), '@', 1))
+    into wish
+  from public.wish_draws d
+  join public.wish_items w on w.id = d.wish_id
+  left join auth.users u on u.id = w.author_id
+  where d.project_id = p_project and d.round_key = round;
+
+  return jsonb_build_object('fresh', inserted is not null, 'wish', wish);
+end;
+$$;
+
+create or replace function public.wish_open(p_project text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  body jsonb;
+begin
+  perform public.wish_enter(p_project);
+  select document into body from public.universes where local_id = p_project order by updated_at desc limit 1;
+  return body;
+end;
+$$;
+
+create or replace function public.wish_mine()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    return '[]'::jsonb;
+  end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', u.local_id,
+      'title', u.title,
+      'slug', coalesce(u.slug, ''),
+      'status', u.status,
+      'updatedAt', u.updated_at
+    ) order by u.updated_at desc)
+    from public.wish_members m
+    join public.universes u on u.local_id = m.project_id
+    where m.user_id = uid and m.role = 'partner'
+  ), '[]'::jsonb);
+end;
+$$;
+
+revoke all on function public.wish_enter(text) from public, anon;
+revoke all on function public.wish_board(text) from public, anon;
+revoke all on function public.wish_add(text, text, text, text, text[]) from public, anon;
+revoke all on function public.wish_enjoy(text, uuid, boolean) from public, anon;
+revoke all on function public.wish_move(text, uuid, integer) from public, anon;
+revoke all on function public.wish_spin(text, text, text[]) from public, anon;
+revoke all on function public.wish_open(text) from public, anon;
+revoke all on function public.wish_mine() from public, anon;
+grant execute on function public.wish_enter(text) to authenticated;
+grant execute on function public.wish_board(text) to authenticated;
+grant execute on function public.wish_add(text, text, text, text, text[]) to authenticated;
+grant execute on function public.wish_enjoy(text, uuid, boolean) to authenticated;
+grant execute on function public.wish_move(text, uuid, integer) to authenticated;
+grant execute on function public.wish_spin(text, text, text[]) to authenticated;
+grant execute on function public.wish_open(text) to authenticated;
+grant execute on function public.wish_mine() to authenticated;

@@ -8,12 +8,21 @@ import { siteRoot } from '@/lib/site';
 import { hashPhrase } from '@/lib/unlock';
 import { PayModal } from '@/hub/PayModal';
 import { InviteSheet } from '@/studio/InviteSheet';
-import { isCita, type ProjectDocument } from '@/schema/project';
+import { extendMaintenance } from '@/schema/deseos';
+import { isCita, isDeseos, type ProjectDocument } from '@/schema/project';
 
 type Health = { urls: string[] };
 
 function forNameOf(doc: ProjectDocument) {
-  return isCita(doc) ? doc.forName : doc.intro.forName;
+  if (isCita(doc)) return doc.forName;
+  if (isDeseos(doc)) return doc.listName;
+  return doc.intro.forName;
+}
+
+function fromNameOf(doc: ProjectDocument) {
+  if (isCita(doc)) return doc.fromName;
+  if (isDeseos(doc)) return doc.ownerName;
+  return doc.intro.fromName;
 }
 
 export function PublishDialog({
@@ -92,8 +101,8 @@ export function PublishDialog({
   const shareLink = liveLink || draftLink;
   const publicLink = liveLink || `${phone}/u/${previewSlug}`;
   const forName = forNameOf(doc).trim();
-  const fromName = (isCita(doc) ? doc.fromName : doc.intro.fromName).trim();
-  const dedication = isCita(doc) ? '' : doc.intro.dedication.trim();
+  const fromName = fromNameOf(doc).trim();
+  const dedication = isCita(doc) || isDeseos(doc) ? '' : doc.intro.dedication.trim();
 
   const copy = async (value: string) => {
     await copyText(value);
@@ -110,8 +119,9 @@ export function PublishDialog({
     let nextSlug = frozen ? doc.meta.slug : `${slugify(slug)}-${tag}`;
     try {
       for (let attempt = 0; attempt < 4; attempt += 1) {
+        const stamped = isDeseos(doc) && !doc.maintainedUntil ? extendMaintenance(doc) : doc;
         const next: ProjectDocument = {
-          ...doc,
+          ...stamped,
           meta: {
             ...doc.meta,
             slug: nextSlug,
@@ -180,7 +190,7 @@ export function PublishDialog({
           <span className="text-[11px] uppercase tracking-[0.16em] text-brass">Sin pagar</span>
           <span className="mt-1 block font-display text-3xl italic">Diseñar la invitación</span>
           <span className="mt-1 block text-[14px] leading-relaxed text-inkwell/55">
-            JPG para el móvil y PDF para enviarlo. El botón abre el {isCita(doc) ? 'sobre' : 'universo'}.
+            JPG para el móvil y PDF para enviarlo. El botón abre {isCita(doc) ? 'el sobre' : isDeseos(doc) ? 'la lista' : 'el universo'}.
           </span>
         </button>
 
@@ -237,7 +247,7 @@ export function PublishDialog({
         </p>
         {paying && due > 0 && (
           <PayModal
-            title={quote.family === 'cita' ? 'Cita' : 'Universo'}
+            title={quote.family === 'cita' ? 'Cita' : quote.family === 'deseos' ? 'Lista de deseos' : 'Universo'}
             cents={due}
             projectId={doc.meta.id}
             family={quote.family}
@@ -254,10 +264,10 @@ export function PublishDialog({
         <InviteSheet
           projectId={doc.meta.id}
           url={publicLink}
-          title={forName ? `Para ${forName}` : 'Para ti'}
+          title={forName ? (isDeseos(doc) ? forName : `Para ${forName}`) : 'Para ti'}
           from={fromName}
-          eyebrow={isCita(doc) ? 'Una cita' : 'Un regalo'}
-          line={dedication || (isCita(doc) ? 'Tengo una pregunta para ti.' : 'Hay un cielo que quiero que abras.')}
+          eyebrow={isCita(doc) ? 'Una cita' : isDeseos(doc) ? 'Una lista' : 'Un regalo'}
+          line={dedication || (isCita(doc) ? 'Tengo una pregunta para ti.' : isDeseos(doc) ? 'Entra con tu correo y escribe planes.' : 'Hay un cielo que quiero que abras.')}
           ready={Boolean(liveLink)}
           onClose={() => setInvite(false)}
         />

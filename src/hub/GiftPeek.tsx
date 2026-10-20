@@ -17,6 +17,7 @@ export function GiftPeek({ id }: { id: TemplateId }) {
           <span className="gift-notch" />
           <div className="gift-screen">
             {id === 'universo' && <UniverseMini />}
+            {id === 'deseos' && <DeseosMini />}
             {id === 'cita' && <CitaMini />}
             {id === 'carta' && <CartaMini />}
             {id === 'album' && <AlbumMini />}
@@ -50,6 +51,17 @@ function UniverseMini() {
         <p className="text-[7px] uppercase tracking-[0.22em] text-[#e8b86d]/70">Para</p>
         <p className="mt-1 font-display text-[1.35rem] italic leading-none">Clara</p>
       </div>
+    </div>
+  );
+}
+
+function DeseosMini() {
+  return (
+    <div className="relative flex h-full flex-col justify-center bg-[#1b1612] px-3 text-[#f3ead8]">
+      <p className="text-[6px] uppercase tracking-[0.18em] text-[#e8b86d]">Ruleta</p>
+      <p className="mt-2 font-display text-[1.05rem] italic leading-none">El finde en la costa</p>
+      <span className="mt-3 block h-px w-10 bg-[#e8b86d]/40" />
+      <p className="mt-2 text-[7px] uppercase tracking-[0.14em] text-[#f3ead8]/50">Fin de semana</p>
     </div>
   );
 }

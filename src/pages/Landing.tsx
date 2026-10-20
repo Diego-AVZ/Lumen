@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { TEMPLATES, type TemplateId } from '@/hub/catalog';
+import { DateAskPlayer } from '@/cita/DateAskPlayer';
+import { blankCita, type DateAskDocument } from '@/schema/cita';
 import { exampleDocument } from '@/schema/example';
 import type { PlayerFrame } from '@/universe/UniversePlayer';
 import type { Star, UniverseDocument } from '@/schema/universe';
@@ -138,10 +141,140 @@ function HeroTour({ doc }: { doc: UniverseDocument }) {
   );
 }
 
+function ProjectStory({ id, cita }: { id: TemplateId; cita: DateAskDocument }) {
+  const story = {
+    cita: {
+      kicker: 'El sobre',
+      title: 'Pedir cita',
+      line: 'Se abre a toques, no de un tirón.',
+      body: 'Le dejas su nombre y el tuyo. Una pregunta —de las que ya están, o la escribes tú—. Una nota corta, de las que se leen antes de contestar. Y dos o tres horas, por si dice que sí: el viernes a las nueve, el sábado por la tarde. El corazón hay que tocarlo seis veces. El no se escurre. El sí se queda, con el día que eligió.',
+    },
+    carta: {
+      kicker: 'La página',
+      title: 'Carta larga',
+      line: 'Sin cielo. Para leerla sentada.',
+      body: 'Un título, el texto todo seguido, y cómo firmas al final. Sirve cuando lo que quieres decir no cabe en una estrella: que lo lea del tirón, sin pasar páginas ni buscar constelaciones. Puedes dejar también una línea pequeña al pie, como quien añade algo después de cerrar la carta.',
+    },
+    album: {
+      kicker: 'Las fotos',
+      title: 'Álbum',
+      line: 'Se hojea. No se cuenta.',
+      body: 'Cada foto va como una polaroid: la imagen, la fecha y una frase debajo. La tarde de la orilla, el camino de vuelta, esa en la que salís mal y da igual. No hace falta un relato. Basta con pasarlas.',
+    },
+    deseos: {
+      kicker: 'Los dos',
+      title: 'Lista de deseos',
+      line: 'Se escribe entre dos, y la ruleta no miente.',
+      body: 'Cada uno va dejando planes: una tarde, un día, un finde, unas vacaciones. Tranquilo, aventura, un viaje. Cuando toca —cada semana, o el plazo que elijáis— los dos giráis con los mismos filtros y sale el mismo plan. Queda en por hacer, hasta que lo marcáis como vivido.',
+    },
+    mapa: {
+      kicker: 'Los sitios',
+      title: 'Mapa de lugares',
+      line: 'Dónde estuvisteis, y qué pasó ahí.',
+      body: 'La orilla, el café, la esquina donde os quedasteis. En cada sitio, una frase de lo que ocurrió. Se leen en lista y, si quieres, encima del mapa. Para volver a un lugar sin tener que explicarlo entero.',
+    },
+  } as const;
+  if (id === 'universo') return null;
+  const item = story[id];
+  return (
+    <article className="grid items-center gap-10 py-16 lg:grid-cols-[1.05fr_0.95fr]">
+      <div>
+        <p className="text-[12px] uppercase tracking-[0.2em] text-[#e8b86d]">{item.kicker}</p>
+        <h3 className="mt-3 font-display text-[2.6rem] italic leading-none">{item.title}</h3>
+        <p className="mt-3 font-display text-[1.35rem] italic text-[#f3ead8]/80">{item.line}</p>
+        <p className="mt-4 max-w-md text-[16px] leading-relaxed text-[#f3ead8]/68">{item.body}</p>
+      </div>
+      <div className="flex justify-center lg:justify-end">
+        <WhenSeen height={868 * 0.54}>
+          <ScaledPhone scale={0.54}>
+            {id === 'cita' && <DateAskPlayer doc={cita} preview />}
+            {id === 'carta' && <CartaSample />}
+            {id === 'album' && <AlbumSample />}
+            {id === 'mapa' && <MapaSample />}
+            {id === 'deseos' && <DeseosSample />}
+          </ScaledPhone>
+        </WhenSeen>
+      </div>
+    </article>
+  );
+}
+
+function DeseosSample() {
+  return (
+    <div className="flex h-full flex-col bg-[#1b1612] px-7 pb-10 pt-16 text-[#f3ead8]">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-[#e8b86d]">Ha salido</p>
+      <h3 className="mt-4 font-display text-[2.2rem] italic leading-[1.05]">El finde en la costa</h3>
+      <p className="mt-3 text-[15px] leading-relaxed text-[#f3ead8]/65">El mismo en los dos móviles. Queda en por hacer.</p>
+      <p className="mt-auto text-[12px] uppercase tracking-[0.16em] text-[#e8b86d]">Fin de semana · tranquilo</p>
+    </div>
+  );
+}
+
+function CartaSample() {
+  return (
+    <div className="flex h-full flex-col bg-[#f6efe6] px-8 pb-10 pt-16 text-[#1b1612]">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-[#8a6232]">Para Clara</p>
+      <h3 className="mt-5 font-display text-[2.4rem] italic leading-[1.05]">Lo que no te dije el martes</h3>
+      <p className="mt-6 text-[16px] leading-relaxed">
+        Quería que lo leyeras sentada. Sin prisa, y sin un cielo alrededor. Solo esto, del tirón.
+      </p>
+      <p className="mt-4 text-[16px] leading-relaxed text-[#1b1612]/70">
+        Si al terminar te queda algo en la boca, está bien. No hacía falta contestarlo esa noche.
+      </p>
+      <p className="mt-auto font-display text-[1.8rem] italic">Alex</p>
+      <p className="mt-2 text-[13px] text-[#1b1612]/45">P. D. El café sigue abierto.</p>
+    </div>
+  );
+}
+
+function AlbumSample() {
+  return (
+    <div className="flex h-full flex-col justify-center gap-4 bg-[#1a140f] px-8">
+      {[
+        ['La orilla', 'un martes'],
+        ['El camino de vuelta', 'esa tarde'],
+      ].map(([title, when]) => (
+        <div key={title} className="rotate-[-1.5deg] bg-[#f6efe6] p-3 pb-8 text-[#1b1612] shadow-lg even:rotate-[1.5deg]">
+          <div className="h-28 bg-[linear-gradient(160deg,#f6e7cf,#e0a36a_55%,#6a4330)]" />
+          <p className="mt-3 font-display text-2xl italic">{title}</p>
+          <p className="text-[12px] uppercase tracking-[0.14em] text-[#1b1612]/45">{when}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MapaSample() {
+  return (
+    <div className="flex h-full flex-col bg-[#071018] px-7 pb-10 pt-16 text-[#f3ead8]">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-[#e8b86d]">Dos sitios</p>
+      {[
+        ['🌊', 'La orilla', 'Ahí se quedó el silencio bueno.'],
+        ['☕', 'El café', 'El que estaba abierto. Pedimos lo mismo.'],
+      ].map(([emoji, title, body]) => (
+        <div key={title} className="mt-6 border-b border-white/10 pb-5">
+          <p className="text-2xl">{emoji}</p>
+          <p className="mt-2 font-display text-[1.8rem] italic">{title}</p>
+          <p className="mt-1 text-[15px] leading-relaxed text-[#f3ead8]/65">{body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Landing() {
+  const [project, setProject] = useState<TemplateId>('universo');
   useEffect(() => {
     void import('@/pages/Hub');
     void import('@/pages/Begin');
+  }, []);
+  const citaDemo = useMemo(() => {
+    const doc = blankCita();
+    doc.forName = 'Clara';
+    doc.fromName = 'Alex';
+    doc.question = '¿Quieres venir conmigo a cenar?';
+    doc.letter = 'No hace falta que sea perfecto. Solo quiero verte.';
+    return doc;
   }, []);
   const scenes = useMemo(() => {
     const base = exampleDocument();
@@ -283,8 +416,8 @@ export function Landing() {
           Lumen
         </a>
         <nav className="flex items-center gap-5 text-[14px]">
-          <a href="#estrellas" className="hidden text-inkwell/70 sm:block">
-            Estrellas
+          <a href="#proyectos" className="hidden text-inkwell/70 sm:block">
+            Proyectos
           </a>
           <a href="#como" className="hidden text-inkwell/70 md:block">
             Cómo funciona
@@ -306,14 +439,14 @@ export function Landing() {
               Un regalo que se explora.
             </h1>
             <p className="mt-6 max-w-[40ch] text-[18px] leading-relaxed text-inkwell/70">
-              Un cielo con su nombre en el centro. Estrellas que se abren —una historia, una lista de fugaces, una carta— y, si quieres, música de Spotify con solo pegar el enlace. El móvil de al lado ya está recorriéndolo.
+              Detalles únicos para conectar. Marca la diferencia. Cuida a las personas que más te importan. <b>Regala diferente.</b> 
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link to="/crear/nuevo" className="rounded-full bg-inkwell px-6 py-3.5 text-[15px] text-linen">
-                Crear un universo
+                Crear un proyecto
               </Link>
-              <a href="#estrellas" className="rounded-full px-5 py-3.5 text-[15px] text-inkwell/70">
-                Ver cada estrella
+              <a href="#proyectos" className="rounded-full px-5 py-3.5 text-[15px] text-inkwell/70">
+                Ver opciones
               </a>
             </div>
           </div>
@@ -323,9 +456,9 @@ export function Landing() {
         <section id="como" className="border-y border-black/5">
           <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-8 md:grid-cols-3">
             {[
-              ['01', 'Escribes como si se lo contaras', 'La portada es un nombre. Cada estrella guarda un tipo de recuerdo, y se lee de una forma distinta.'],
-              ['02', 'Lo ves en un móvil, mientras lo haces', 'Arrastras las estrellas por el cielo. Lo que cambias se guarda solo. La música y las fechas se pegan en el mismo sitio.'],
-              ['03', 'Publicas un enlace', 'Se lo mandas. Lo abre, y está dentro. Con la misma Wi-Fi puedes probarlo hoy desde su teléfono.'],
+              ['01', 'Escribes como si se lo contaras', 'Crea a tu gusto. Personaliza cada detalle. Recuérdaselo'],
+              ['02', 'Visualiza en tiempo real', 'Revisa como evoluciona tu regalo. Modifica, edita y guarda.'],
+              ['03', 'Publica el proyecto', 'Envíaselo en PDF o en un QR. Disfruta de su sonrisa al verlo.'],
             ].map(([n, title, body]) => (
               <article key={n}>
                 <p className="font-display text-xl italic text-brass">{n}</p>
@@ -336,7 +469,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="estrellas" className="landing-night text-[#f3ead8]">
+        <section id="proyectos" className="landing-night text-[#f3ead8]">
           {[
             { left: '8%', top: '6%', delay: '0s' },
             { left: '62%', top: '18%', delay: '3.2s' },
@@ -347,15 +480,37 @@ export function Landing() {
             <span key={streak.top + streak.left} className="landing-streak" style={{ left: streak.left, top: streak.top, animationDelay: streak.delay }} />
           ))}
           <div className="relative mx-auto max-w-6xl px-5 py-20 sm:px-8">
-            <p className="text-[12px] uppercase tracking-[0.24em] text-[#e8b86d]">Las estrellas</p>
-            <h2 className="mt-4 max-w-[14ch] font-display text-[clamp(2.6rem,5vw,4.2rem)] italic leading-[0.95]">
-              Siete maneras de guardar un día.
+            <p className="text-[12px] uppercase tracking-[0.24em] text-[#e8b86d]">Los proyectos</p>
+            <h2 className="mt-4 max-w-[16ch] font-display text-[clamp(2.6rem,5vw,4.2rem)] italic leading-[0.95]">
+              No tiene que ser un cielo.
             </h2>
             <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-[#f3ead8]/70">
-              No es una lista de funciones. Cada estrella se abre distinto. La música no es una octava: es un botón en el cielo, o dentro de un capítulo. Pegas un enlace de Spotify —canción, álbum o lista— y suena. No hace falta cuenta de desarrollador ni un plan de pago.
+              En crear eliges el regalo. Un universo, una cita, una lista de deseos, una carta, un álbum o un mapa. Toca uno y ves qué cabe dentro.
             </p>
 
-            <div className="mt-6 divide-y divide-white/10">
+            <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {TEMPLATES.map((item) => {
+                const on = project === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setProject(item.id)}
+                    className={`rounded-[24px] px-4 py-4 text-left ring-1 transition ${on ? 'bg-[#f3ead8] text-[#1b1612] ring-[#f3ead8]' : 'bg-white/5 text-[#f3ead8] ring-white/10 hover:bg-white/10'}`}
+                  >
+                    <span className={`text-[10px] uppercase tracking-[0.16em] ${on ? 'text-[#8a6232]' : 'text-[#e8b86d]'}`}>{item.tag}</span>
+                    <span className="mt-2 block font-display text-[1.55rem] italic leading-none">{item.name}</span>
+                    <span className={`mt-2 block text-[13px] leading-snug ${on ? 'text-[#1b1612]/65' : 'text-[#f3ead8]/60'}`}>{item.line}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {project === 'universo' && (
+            <div id="estrellas" className="mt-6 divide-y divide-white/10">
+              <p className="py-8 max-w-xl text-[16px] leading-relaxed text-[#f3ead8]/70">
+                Dentro del universo cada cosa es una estrella, y cada una se abre distinto. La música no es un menú: es un botón en el cielo, o dentro de un capítulo. Pegas un enlace de Spotify —canción, álbum o lista— y suena.
+              </p>
               {features.map((feature, index) => {
                 const phone = 868 * 0.54;
                 const flip = index % 2 === 1;
@@ -381,16 +536,19 @@ export function Landing() {
                 );
               })}
             </div>
+            )}
+
+            {project !== 'universo' && <ProjectStory id={project} cita={citaDemo} />}
           </div>
         </section>
 
         <section className="mx-auto max-w-3xl px-5 py-24 text-center sm:px-8">
-          <h2 className="font-display text-[clamp(2.6rem,5vw,4rem)] italic leading-[1]">Lo abre y está dentro.</h2>
+          <h2 className="font-display text-[clamp(2.6rem,5vw,4rem)] italic leading-[1]">Demuestra cuanto te importa</h2>
           <p className="mx-auto mt-5 max-w-lg text-[17px] leading-relaxed text-inkwell/65">
-            La puerta, el nombre, el cielo, y después cada estrella. El enlace es el regalo.
+            Crea rápido, personaliza con calma y publicalo en un instante. Pero siempre con cariño
           </p>
           <Link to="/crear/nuevo" className="mt-8 inline-block rounded-full bg-inkwell px-6 py-3.5 text-linen">
-            Crear el primero
+            Crear mi regalo
           </Link>
         </section>
       </main>

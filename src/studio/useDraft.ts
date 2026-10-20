@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadDraft, purgeProject, saveDraft } from '@/lib/drafts';
-import { isCita } from '@/schema/project';
+import { isCita, isDeseos } from '@/schema/project';
 import { displayTitle, type UniverseDocument } from '@/schema/universe';
 
 function touch(doc: UniverseDocument): UniverseDocument {
@@ -32,7 +32,7 @@ export function useDraft(id: string) {
     void loadDraft(id)
       .then((loaded) => {
         if (cancel) return;
-        if (loaded && !isCita(loaded)) {
+        if (loaded && !isCita(loaded) && !isDeseos(loaded)) {
           lastSaved.current = loaded;
           setDoc(loaded);
           return;

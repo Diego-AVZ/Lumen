@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { useSession } from '@/lib/session';
 import { DateAskPlayer } from '@/cita/DateAskPlayer';
 import { loadOwned, openGift, readGift } from '@/lib/cloud';
 import { peekDraft } from '@/lib/drafts';
 import { GiftLinks } from '@/pages/GiftLinks';
 import { pingVisit } from '@/lib/stats';
 import { rememberedPhrase, rememberPhrase } from '@/lib/unlock';
-import { isCita, parseProject, type ProjectDocument } from '@/schema/project';
+import { DeseosBoard } from '@/deseos/DeseosBoard';
+import { isCita, isDeseos, parseProject, type ProjectDocument } from '@/schema/project';
 import { UniversePlayer } from '@/universe/UniversePlayer';
 
 function embeddedDocument(kind: 'published' | 'draft', slug?: string, id?: string) {
@@ -24,6 +26,7 @@ function embeddedDocument(kind: 'published' | 'draft', slug?: string, id?: strin
 
 export function Gift({ kind }: { kind: 'published' | 'draft' }) {
   const { slug, id } = useParams();
+  const { user, ready } = useSession();
   const initial = embeddedDocument(kind, slug, id) ?? (kind === 'draft' && id ? peekDraft(id) : null);
   const [doc, setDoc] = useState<ProjectDocument | null>(initial);
   const [message, setMessage] = useState('');
@@ -108,9 +111,9 @@ export function Gift({ kind }: { kind: 'published' | 'draft' }) {
   }, [visitId]);
 
   useEffect(() => {
-    const color = doc && !isCita(doc) ? doc.theme.ink : '#140e0c';
+    const color = !doc || isCita(doc) ? '#140e0c' : isDeseos(doc) ? '#f6efe6' : doc.theme.ink;
     document.body.style.background = color;
-    const name = doc ? (isCita(doc) ? doc.forName : doc.intro.forName) : '';
+    const name = !doc ? '' : isCita(doc) ? doc.forName : isDeseos(doc) ? doc.listName : doc.intro.forName;
     document.title = name ? `Para ${name}` : 'Lumen';
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
     return () => {
@@ -170,6 +173,37 @@ export function Gift({ kind }: { kind: 'published' | 'draft' }) {
         ) : (
           <span className="h-2 w-2 rounded-full bg-[#e8b86d]" />
         )}
+      </div>
+    );
+  }
+
+  if (isDeseos(doc)) {
+    if (!ready) {
+      return (
+        <div className="grid h-dvh place-items-center bg-linen">
+          <span className="h-2 w-2 rounded-full bg-brass" />
+        </div>
+      );
+    }
+    if (!user) {
+      return (
+        <div className="grid min-h-dvh place-items-center bg-linen px-6 text-center text-inkwell">
+          <div className="max-w-md">
+            <p className="text-[12px] uppercase tracking-[0.2em] text-brass">{doc.listName || 'Lista de deseos'}</p>
+            <h1 className="mt-3 font-display text-5xl italic leading-[0.95]">Entra con tu correo.</h1>
+            <p className="mt-4 text-[16px] leading-relaxed text-inkwell/60">
+              Esta lista se escribe entre dos. Tiene que ser el correo que dejaron al crearla.
+            </p>
+            <Link to="/crear" className="mt-8 inline-block rounded-full bg-inkwell px-6 py-3 text-linen">
+              Entrar
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-dvh bg-linen text-inkwell">
+        <DeseosBoard doc={doc} owner={false} />
       </div>
     );
   }

@@ -11,8 +11,9 @@ import { GiftPeek } from '@/hub/GiftPeek';
 import { PriceTag } from '@/hub/PriceTag';
 import { documentFromEasy, EMPTY_EASY, type EasyAnswers } from '@/studio/easyUniverse';
 import { CitaCreate } from '@/pages/CitaCreate';
+import { DeseosCreate } from '@/pages/DeseosCreate';
 
-type Phase = 'plantilla' | 'modo' | 'nombres' | 'wizard' | 'cita';
+type Phase = 'plantilla' | 'modo' | 'nombres' | 'wizard' | 'cita' | 'deseos';
 type Mode = 'facil' | 'max';
 
 const WIZARD: {
@@ -81,6 +82,7 @@ export function Begin() {
   const plantilla = (params.get('plantilla') as TemplateId | null) ?? null;
   const [phase, setPhase] = useState<Phase>(() => {
     if (params.get('plantilla') === 'cita') return 'cita';
+    if (params.get('plantilla') === 'deseos') return 'deseos';
     if (params.get('modo') === 'facil') return 'wizard';
     if (params.get('modo') === 'max') return 'nombres';
     if (params.get('plantilla')) return 'modo';
@@ -106,7 +108,7 @@ export function Begin() {
   }, [answers]);
 
   useEffect(() => {
-    if (plantilla && plantilla !== 'universo' && plantilla !== 'cita') {
+    if (plantilla && plantilla !== 'universo' && plantilla !== 'cita' && plantilla !== 'deseos') {
       setSoon(plantilla);
       params.delete('plantilla');
       params.delete('modo');
@@ -123,7 +125,7 @@ export function Begin() {
     setError('');
     haptic('light');
     setParams({ plantilla: id });
-    setPhase(id === 'cita' ? 'cita' : 'modo');
+    setPhase(id === 'cita' ? 'cita' : id === 'deseos' ? 'deseos' : 'modo');
   };
 
   const pickMode = (next: Mode) => {
@@ -205,6 +207,14 @@ export function Begin() {
             }}
           />
         )}
+        {phase === 'deseos' && (
+          <DeseosCreate
+            onBack={() => {
+              setPhase('plantilla');
+              setParams({});
+            }}
+          />
+        )}
         {phase === 'plantilla' && (
           <>
             <p className="text-[12px] uppercase tracking-[0.22em] text-brass">Crear</p>
@@ -212,7 +222,7 @@ export function Begin() {
               Elige el regalo
             </h1>
             <p className="mt-4 max-w-xl text-[17px] leading-relaxed text-inkwell/60">
-              Sobre o universo. Crear es gratis. El precio se ve mientras lo haces y se cobra al publicar.
+              Sobre, universo o una lista de deseos. Crear es gratis. El precio se ve mientras lo haces y se cobra al publicar.
             </p>
             <ul className="mt-10 grid gap-4 md:grid-cols-2">
               {TEMPLATES.map((item) => (

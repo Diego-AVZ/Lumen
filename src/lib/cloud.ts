@@ -206,7 +206,7 @@ function asGiftRead(raw: unknown): GiftRead | null {
   if (rec.state === 'locked' || rec.state === 'wrong' || rec.state === 'missing') {
     return { state: rec.state, doc: null };
   }
-  if (rec.kind === 'cita' || rec.stars) return { state: 'open', doc: decodeDocument(rec) };
+  if (rec.kind === 'cita' || rec.kind === 'deseos' || rec.stars) return { state: 'open', doc: decodeDocument(rec) };
   return null;
 }
 
@@ -276,11 +276,13 @@ export type CloudUniverse = {
   slug: string;
   status: 'draft' | 'published';
   updatedAt: string;
-  kind: 'universo' | 'cita';
+  kind: 'universo' | 'cita' | 'deseos';
 };
 
-function kindOfId(id: string): 'universo' | 'cita' {
-  return id.startsWith('cita_') ? 'cita' : 'universo';
+function kindOfId(id: string): 'universo' | 'cita' | 'deseos' {
+  if (id.startsWith('cita_')) return 'cita';
+  if (id.startsWith('deseos_')) return 'deseos';
+  return 'universo';
 }
 
 export async function listMine(): Promise<CloudUniverse[]> {

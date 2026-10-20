@@ -1,5 +1,6 @@
 import { CITA_PHRASES, type DateAskDocument } from '@/schema/cita';
-import { isCita, type ProjectDocument } from '@/schema/project';
+import type { DeseosDocument } from '@/schema/deseos';
+import { isCita, isDeseos, type ProjectDocument } from '@/schema/project';
 import type { UniverseDocument } from '@/schema/universe';
 import type { PlanFamily } from '@/lib/plans';
 
@@ -60,7 +61,18 @@ export const PRICE: Record<PlanFamily, PriceBook> = {
       { id: 'gate', label: 'Contraseña', cents: 100 },
     ],
   },
+  deseos: {
+    id: 'deseos',
+    name: 'Lista de deseos',
+    baseCents: 350,
+    meters: [],
+    features: [{ id: 'mantenimiento', label: 'Mantenimiento', cents: 150 }],
+  },
 };
+
+export function maintenanceCents() {
+  return PRICE.deseos.features.find((feature) => feature.id === 'mantenimiento')?.cents ?? 0;
+}
 
 export type QuoteLine = {
   id: string;
@@ -76,13 +88,19 @@ export type Quote = {
 };
 
 export function priceOf(doc: ProjectDocument): Quote {
-  return isCita(doc) ? quoteCita(doc) : quoteUniverse(doc);
+  if (isCita(doc)) return quoteCita(doc);
+  if (isDeseos(doc)) return quoteDeseos(doc);
+  return quoteUniverse(doc);
 }
 
 function quoteCita(doc: DateAskDocument): Quote {
   return build(PRICE.cita, citaCounts(doc), {
     customQuestion: Boolean(doc.question.trim()) && !(CITA_PHRASES as readonly string[]).includes(doc.question.trim()),
   });
+}
+
+function quoteDeseos(_doc: DeseosDocument): Quote {
+  return build(PRICE.deseos, {}, { mantenimiento: true });
 }
 
 function quoteUniverse(doc: UniverseDocument): Quote {

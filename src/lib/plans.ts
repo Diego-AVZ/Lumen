@@ -1,7 +1,7 @@
-export const PLAN_IDS = ['cita', 'cita_pro', 'plantilla', 'plantilla_pro'] as const;
+export const PLAN_IDS = ['cita', 'cita_pro', 'plantilla', 'plantilla_pro', 'deseos'] as const;
 
 export type PlanId = (typeof PLAN_IDS)[number];
-export type PlanFamily = 'cita' | 'plantilla';
+export type PlanFamily = 'cita' | 'plantilla' | 'deseos';
 
 export type PlanOffer = {
   id: PlanId;
@@ -82,11 +82,16 @@ export function plansInFamily(family: PlanFamily) {
 }
 
 export function familyOf(plan: PlanId): PlanFamily {
-  return plan === 'cita' || plan === 'cita_pro' ? 'cita' : 'plantilla';
+  if (plan === 'cita' || plan === 'cita_pro') return 'cita';
+  if (plan === 'deseos') return 'deseos';
+  return 'plantilla';
 }
 
 export function createPath(plan: PlanId) {
-  return familyOf(plan) === 'cita' ? '/crear/nuevo?plantilla=cita' : '/crear/nuevo?plantilla=universo';
+  const family = familyOf(plan);
+  if (family === 'cita') return '/crear/nuevo?plantilla=cita';
+  if (family === 'deseos') return '/crear/nuevo?plantilla=deseos';
+  return '/crear/nuevo?plantilla=universo';
 }
 
 export function euros(cents: number) {

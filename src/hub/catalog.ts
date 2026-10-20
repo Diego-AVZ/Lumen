@@ -26,6 +26,14 @@ export const TEMPLATES = [
     sky: 'linear-gradient(165deg, #3a2418 0%, #0c0b0a 46%, #070606 100%)',
   },
   {
+    id: 'deseos',
+    name: 'Lista de deseos',
+    tag: 'Lista ahora',
+    line: 'Planes que escribís los dos. Una ruleta, cada cierto tiempo, y sale el mismo en los dos móviles.',
+    available: true,
+    sky: 'linear-gradient(165deg, #3a2a18 0%, #1a120c 48%, #0c0907 100%)',
+  },
+  {
     id: 'cita',
     name: 'Pedir cita',
     tag: 'Lista ahora',

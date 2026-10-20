@@ -1,4 +1,5 @@
 import { deleteCloudUniverse, listMine, loadOwned, saveUniverse, type CloudUniverse } from '@/lib/cloud';
+import { listPartnerBoards } from '@/lib/wishes';
 import type { PlanId } from '@/lib/plans';
 import { claimPurchase, releasePurchase } from '@/lib/purchases';
 import { parseProject, type ProjectDocument } from '@/schema/project';
@@ -14,7 +15,7 @@ export type DraftSummary = {
   updatedAt: string;
   slug: string;
   status: 'draft' | 'published';
-  kind: 'universo' | 'cita';
+  kind: 'universo' | 'cita' | 'deseos';
 };
 
 function asSummary(row: CloudUniverse): DraftSummary {
@@ -33,7 +34,10 @@ export function peekDraft(id: string): ProjectDocument | null {
 }
 
 export async function listDrafts(): Promise<DraftSummary[]> {
-  return (await listMine()).map(asSummary);
+  const mine = (await listMine()).map(asSummary);
+  const shared = (await listPartnerBoards()).map(asSummary);
+  const seen = new Set(mine.map((row) => row.id));
+  return [...mine, ...shared.filter((row) => row.id && !seen.has(row.id))];
 }
 
 export async function loadDraft(id: string): Promise<ProjectDocument | null> {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { listDrafts, loadDraft, purgeProject, saveDraft, type DraftSummary } from '@/lib/drafts';
 import { AccountBar } from '@/studio/AccountBar';
-import { isCita, parseProject, projectTitle } from '@/schema/project';
+import { isCita, isDeseos, kindLabel, parseProject, projectTitle } from '@/schema/project';
 import { exampleDocument } from '@/schema/example';
 import { uid } from '@/lib/motion';
 import { HubShell } from '@/hub/HubShell';
@@ -24,6 +24,7 @@ export function Hub() {
     void import('@/pages/Begin');
     void import('@/pages/Studio');
     void import('@/pages/DateAskStudio');
+    void import('@/pages/DeseosStudio');
   }, []);
 
   return (
@@ -78,7 +79,7 @@ function ProjectsPanel() {
         </Link>
       </div>
       <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-inkwell/60">
-        Hoy son universos. Mañana pueden ser cartas, álbumes o mapas. Viven en tu cuenta.
+        Universos, citas y listas de deseos. Si te invitan a una lista, aparece aquí al entrar con ese correo.
       </p>
       {note && <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[#8a3d32]">{note}</p>}
 
@@ -131,7 +132,7 @@ function ProjectsPanel() {
             <Link to={`/crear/${row.id}`} className="block">
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-linen px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-brass">
-                  {row.kind === 'cita' ? 'Cita' : 'Universo'}
+                  {kindLabel(row.kind)}
                 </span>
                 <span className="text-[11px] uppercase tracking-[0.14em] text-inkwell/40">
                   {row.status === 'published' ? 'Publicado' : 'Borrador'}
@@ -155,7 +156,7 @@ function ProjectsPanel() {
                       const source = await loadDraft(row.id);
                       if (!source) return;
                       const copy = parseProject(JSON.parse(JSON.stringify(source)));
-                      copy.meta.id = isCita(copy) ? uid('cita') : uid('uni');
+                      copy.meta.id = isCita(copy) ? uid('cita') : isDeseos(copy) ? uid('deseos') : uid('uni');
                       copy.meta.slug = '';
                       copy.meta.status = 'draft';
                       copy.meta.publishedAt = undefined;
@@ -244,7 +245,7 @@ function UsoPanel() {
               {(bought ?? []).map((row) => (
                 <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-3 rounded-[24px] bg-white px-5 py-4 ring-1 ring-black/5">
                   <span>
-                    <span className="font-display text-3xl italic">{familyOf(row.plan) === 'cita' ? 'Cita' : 'Universo'}</span>
+                    <span className="font-display text-3xl italic">{familyOf(row.plan) === 'cita' ? 'Cita' : familyOf(row.plan) === 'deseos' ? 'Lista de deseos' : 'Universo'}</span>
                     <span className="ml-3 text-[13px] text-inkwell/45">
                       {row.status === 'used' ? 'Aplicado a un regalo' : 'Libre, se usa al publicar'}
                     </span>
