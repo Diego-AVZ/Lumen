@@ -187,7 +187,7 @@ function ProjectStory({ id, cita, web, viaje }: { id: TemplateId; cita: DateAskD
       kicker: 'El mapa',
       title: 'El viaje',
       line: 'Primero el recorrido entero. Luego, cada parada.',
-      body: 'El satélite ocupa media pantalla, con nombres de pueblos y ciudades. Se toca un punto, o se pasa al siguiente. En cada parada: el título, una frase, la foto y el plan. Al final, una diapositiva con el presupuesto: por día, por persona y el total, en euros o dólares. Lo que se deja vacío no sale. La base son 12,95 €. Se cobra al publicar.',
+      body: 'El satélite ocupa media pantalla, con nombres de pueblos y ciudades. Se toca un punto, o se pasa al siguiente. En cada parada: el título, una frase, la foto y el plan. Al final, las cuentas: por día, por persona y el total, en euros o dólares. Quien abre el enlace puede dejar una nota de lo que ha pagado. Lo que se deja vacío no sale. La base son 12,95 €. Se cobra al publicar.',
     },
   } as const;
   if (id === 'universo') return null;
@@ -205,7 +205,7 @@ function ProjectStory({ id, cita, web, viaje }: { id: TemplateId; cita: DateAskD
           <ScaledPhone scale={0.54}>
             {id === 'cita' && <DateAskPlayer doc={cita} preview />}
             {id === 'web' && <WebPlayer doc={web} framed />}
-            {id === 'viaje' && <TripPlayer doc={viaje} framed />}
+            {id === 'viaje' && <TripPlayer doc={viaje} framed preview />}
             {id === 'carta' && <CartaSample />}
             {id === 'album' && <AlbumSample />}
             {id === 'mapa' && <MapaSample />}

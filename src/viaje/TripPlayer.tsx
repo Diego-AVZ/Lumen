@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { haptic } from '@/lib/haptics';
 import { TRIP_SLIDE, tripHeadline, type TripDocument, type TripStop } from '@/schema/viaje';
 import { formatMoney, parseMoney, tripMoney } from '@/viaje/money';
+import { addTripNote, listTripNotes, notesAreLive, type TripNote } from '@/viaje/notes';
 import { TripMap, pinOf } from '@/viaje/TripMap';
 
 export function TripPlayer({
   doc,
   framed = false,
+  preview = false,
   stopId,
   onStop,
   onDrop,
@@ -59,7 +61,7 @@ export function TripPlayer({
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
         <p className="pointer-events-none absolute left-4 top-[calc(var(--safe-top)+0.7rem)] text-[11px] uppercase tracking-[0.2em] text-white/80">
-          {slide ? 'El presupuesto' : stop ? `Parada ${index + 1} de ${doc.stops.length}` : 'Todo el recorrido'}
+          {slide ? 'Cuentas' : stop ? `Parada ${index + 1} de ${doc.stops.length}` : 'Todo el recorrido'}
         </p>
         {onDrop && !slide && (
           <p className="pointer-events-none absolute bottom-3 left-4 right-4 text-[11px] text-white/80">
@@ -75,8 +77,8 @@ export function TripPlayer({
       >
         <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-black/15" />
         <div className="scroll-y min-h-0 flex-1 px-5 pb-4 pt-4">
-          {slide && money ? (
-            <MoneySlide money={money} />
+          {slide ? (
+            <Accounts doc={doc} preview={preview} money={money} />
           ) : stop ? (
             <StopView
               stop={stop}
@@ -118,14 +120,13 @@ export function TripPlayer({
               </button>
               <button
                 type="button"
-                disabled={index >= doc.stops.length - 1 && !money}
                 onClick={() => {
                   if (index >= doc.stops.length - 1) go(TRIP_SLIDE);
                   else go(doc.stops[index + 1]?.id ?? null);
                 }}
-                className="rounded-full px-3 py-2 text-[13px] ring-1 ring-black/10 disabled:opacity-30"
+                className="rounded-full px-3 py-2 text-[13px] ring-1 ring-black/10"
               >
-                {index >= doc.stops.length - 1 ? 'Diapositiva' : 'Siguiente'}
+                {index >= doc.stops.length - 1 ? 'Cuentas' : 'Siguiente'}
               </button>
             </>
           ) : (
@@ -138,15 +139,13 @@ export function TripPlayer({
               >
                 Ver la primera parada
               </button>
-              {money && (
-                <button
-                  type="button"
-                  onClick={() => go(TRIP_SLIDE)}
-                  className="rounded-full px-4 py-3 text-[14px] ring-1 ring-black/15"
-                >
-                  Diapositiva
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => go(TRIP_SLIDE)}
+                className="rounded-full px-4 py-3 text-[14px] ring-1 ring-black/15"
+              >
+                Cuentas
+              </button>
             </div>
           )}
         </footer>
@@ -271,47 +270,145 @@ function StopView({
   );
 }
 
-function MoneySlide({ money }: { money: NonNullable<ReturnType<typeof tripMoney>> }) {
+function Accounts({
+  doc,
+  preview,
+  money,
+}: {
+  doc: TripDocument;
+  preview?: boolean;
+  money: ReturnType<typeof tripMoney>;
+}) {
+  const live = notesAreLive(doc, preview);
+  const [notes, setNotes] = useState<TripNote[]>([]);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let stop = false;
+    const load = () => {
+      void listTripNotes(doc, live).then((rows) => {
+        if (!stop) setNotes(rows);
+      });
+    };
+    load();
+    const beat = live ? window.setInterval(load, 7000) : 0;
+    return () => {
+      stop = true;
+      if (beat) window.clearInterval(beat);
+    };
+  }, [doc, live]);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const rows = await addTripNote(doc, live, draft);
+      haptic('success');
+      setNotes(rows);
+      setDraft('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo dejar.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <article>
-      <p className="text-[11px] uppercase tracking-[0.2em] text-[#8a6232]">Diapositiva</p>
-      <h2 className="mt-2 font-display text-[2.35rem] italic leading-[0.95]">El presupuesto</h2>
-      <p className="mt-5 font-display text-[2.6rem] italic leading-none">{formatMoney(money.total, money.currency)}</p>
-      <p className="mt-2 text-[14px] text-[#1b1612]/55">
-        Total estimado
-        {money.people ? ` · ${money.people} ${money.people === 1 ? 'persona' : 'personas'}` : ''}
-      </p>
-      {money.each != null && (
-        <p className="mt-4 rounded-[18px] bg-[#1b1612] px-4 py-3 text-[#f6efe6]">
-          <span className="block text-[11px] uppercase tracking-[0.16em] text-[#e8b86d]">Por persona</span>
-          <span className="mt-1 block font-display text-[1.8rem] italic">{formatMoney(money.each, money.currency)}</span>
-        </p>
+      <p className="text-[11px] uppercase tracking-[0.2em] text-[#8a6232]">Cuentas</p>
+      <h2 className="mt-2 font-display text-[2.35rem] italic leading-[0.95]">Lo que se ha gastado</h2>
+      {money ? (
+        <>
+          <p className="mt-5 font-display text-[2.6rem] italic leading-none">{formatMoney(money.total, money.currency)}</p>
+          <p className="mt-2 text-[14px] text-[#1b1612]/55">
+            Total estimado
+            {money.people ? ` · ${money.people} ${money.people === 1 ? 'persona' : 'personas'}` : ''}
+          </p>
+          {money.each != null && (
+            <p className="mt-4 rounded-[18px] bg-[#1b1612] px-4 py-3 text-[#f6efe6]">
+              <span className="block text-[11px] uppercase tracking-[0.16em] text-[#e8b86d]">Por persona</span>
+              <span className="mt-1 block font-display text-[1.8rem] italic">{formatMoney(money.each, money.currency)}</span>
+            </p>
+          )}
+          {(money.days.length > 0 || money.extra > 0) && (
+            <ul className="mt-5 divide-y divide-black/10 border-y border-black/10">
+              {money.days.map((day, index) => (
+                <li key={day.id} className="flex items-baseline justify-between gap-3 py-3">
+                  <span>
+                    <span className="block text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Día {index + 1}</span>
+                    <span className="mt-0.5 block text-[15px]">{day.title}</span>
+                  </span>
+                  <span className="shrink-0 text-[15px]">{formatMoney(day.amount, money.currency)}</span>
+                </li>
+              ))}
+              {money.extra > 0 && (
+                <li className="flex items-baseline justify-between gap-3 py-3">
+                  <span>
+                    <span className="block text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Extra</span>
+                    <span className="mt-0.5 block text-[15px]">Fuera de las paradas</span>
+                  </span>
+                  <span className="shrink-0 text-[15px]">{formatMoney(money.extra, money.currency)}</span>
+                </li>
+              )}
+            </ul>
+          )}
+          {money.note && <p className="mt-4 text-[14px] leading-relaxed text-[#1b1612]/60">{money.note}</p>}
+        </>
+      ) : (
+        <p className="mt-3 text-[15px] leading-relaxed text-[#1b1612]/55">Todavía no hay un estimado. Las notas sí se pueden dejar.</p>
       )}
-      {(money.days.length > 0 || money.extra > 0) && (
-        <ul className="mt-5 divide-y divide-black/10 border-y border-black/10">
-          {money.days.map((day, index) => (
-            <li key={day.id} className="flex items-baseline justify-between gap-3 py-3">
-              <span>
-                <span className="block text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Día {index + 1}</span>
-                <span className="mt-0.5 block text-[15px]">{day.title}</span>
-              </span>
-              <span className="shrink-0 text-[15px]">{formatMoney(day.amount, money.currency)}</span>
+
+      <p className="mt-7 text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Notas de quien va</p>
+      <p className="mt-1 text-[13px] leading-relaxed text-[#1b1612]/45">
+        Quien abre el enlace puede escribir. Jorge paga el restaurante, 180 €.
+      </p>
+      <form onSubmit={(event) => void submit(event)} className="mt-3">
+        <textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          rows={3}
+          maxLength={280}
+          placeholder="Jorge paga todo en el restaurante, 180 €"
+          className="w-full resize-none rounded-[16px] border border-black/10 bg-white px-3 py-2.5 text-[14.5px] outline-none placeholder:text-[#1b1612]/30 focus:border-[#8a6232]/50"
+        />
+        <button
+          type="submit"
+          disabled={busy || draft.trim().length < 2}
+          className="mt-2 rounded-full bg-[#1b1612] px-4 py-2 text-[13px] text-[#f6efe6] disabled:opacity-30"
+        >
+          {busy ? 'Dejando…' : 'Dejar la nota'}
+        </button>
+        {error && <p className="mt-2 text-[13px] text-[#8a3d32]">{error}</p>}
+      </form>
+      {notes.length === 0 ? (
+        <p className="mt-4 text-[14px] text-[#1b1612]/40">Todavía no hay ninguna.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-black/10 border-t border-black/10">
+          {notes.map((note) => (
+            <li key={note.id} className="py-3">
+              <p className="text-[15px] leading-relaxed">{note.body}</p>
+              {note.at && <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-[#1b1612]/35">{whenOf(note.at)}</p>}
             </li>
           ))}
-          {money.extra > 0 && (
-            <li className="flex items-baseline justify-between gap-3 py-3">
-              <span>
-                <span className="block text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Extra</span>
-                <span className="mt-0.5 block text-[15px]">Fuera de las paradas</span>
-              </span>
-              <span className="shrink-0 text-[15px]">{formatMoney(money.extra, money.currency)}</span>
-            </li>
-          )}
         </ul>
       )}
-      {money.note && <p className="mt-4 text-[14px] leading-relaxed text-[#1b1612]/60">{money.note}</p>}
     </article>
   );
+}
+
+function whenOf(iso: string) {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return '';
+  const minutes = Math.round((Date.now() - then) / 60000);
+  if (minutes < 1) return 'Ahora';
+  if (minutes < 60) return `Hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(new Date(then));
 }
 
 function formatStopCost(raw: string, currency: TripDocument['budget']['currency']) {

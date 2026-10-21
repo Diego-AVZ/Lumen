@@ -11,7 +11,6 @@ import { coordsLabel, parseLatLngPair } from '@/universe/coords';
 import { TRIP_SLIDE, createStop, parseTrip, tripTitle, type TripBudget, type TripDocument, type TripStop } from '@/schema/viaje';
 import { PhoneRack, PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
-import { tripMoney } from '@/viaje/money';
 import { pinOf } from '@/viaje/TripMap';
 import { TripPlayer } from '@/viaje/TripPlayer';
 
@@ -150,23 +149,18 @@ export function TripStudio({ id }: { id: string }) {
     });
   };
 
-  const money = tripMoney(doc);
   const rackItems: { key: string; label: string; node: ReactNode }[] = [
-    { key: 'route', label: 'Recorrido', node: <TripPlayer doc={doc} framed stopId={null} onStop={() => undefined} /> },
+    { key: 'route', label: 'Recorrido', node: <TripPlayer doc={doc} framed preview stopId={null} onStop={() => undefined} /> },
     ...doc.stops.map((stop, index) => ({
       key: stop.id,
       label: stop.title.trim() || `Parada ${index + 1}`,
-      node: <TripPlayer doc={doc} framed stopId={stop.id} onStop={() => undefined} />,
+      node: <TripPlayer doc={doc} framed preview stopId={stop.id} onStop={() => undefined} />,
     })),
-    ...(money
-      ? [
-          {
-            key: 'slide',
-            label: 'Diapositiva',
-            node: <TripPlayer doc={doc} framed stopId={TRIP_SLIDE} onStop={() => undefined} />,
-          },
-        ]
-      : []),
+    {
+      key: 'slide',
+      label: 'Cuentas',
+      node: <TripPlayer doc={doc} framed preview stopId={TRIP_SLIDE} onStop={() => undefined} />,
+    },
   ];
 
   return (
@@ -275,15 +269,13 @@ export function TripStudio({ id }: { id: string }) {
                 {index + 1}. {stop.title.trim() || 'Sin nombre'}
               </button>
             ))}
-            {money && (
-              <button
-                type="button"
-                onClick={() => setFocus(TRIP_SLIDE)}
-                className={`rounded-full px-2.5 py-1 text-[12px] ${focus === TRIP_SLIDE ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
-              >
-                Diapositiva
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setFocus(TRIP_SLIDE)}
+              className={`rounded-full px-2.5 py-1 text-[12px] ${focus === TRIP_SLIDE ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+            >
+              Cuentas
+            </button>
           </div>
 
           {doc.stops.map((stop, index) =>
@@ -325,7 +317,7 @@ export function TripStudio({ id }: { id: string }) {
             <PhoneRack items={rackItems} />
           ) : (
             <PhoneStage>
-              <TripPlayer doc={doc} framed stopId={focus} onStop={setFocus} onDrop={placeOnMap} />
+              <TripPlayer doc={doc} framed preview stopId={focus} onStop={setFocus} onDrop={placeOnMap} />
             </PhoneStage>
           )}
         </div>

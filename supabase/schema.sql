@@ -1029,3 +1029,76 @@ grant execute on function public.wish_move(text, uuid, integer) to authenticated
 grant execute on function public.wish_spin(text, text, text[], boolean) to authenticated;
 grant execute on function public.wish_open(text) to authenticated;
 grant execute on function public.wish_mine() to authenticated;
+
+-- Notas del viaje: quien tiene el enlace puede dejar una frase (quién pagó, cuánto).
+create table if not exists public.trip_notes (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null,
+  body text not null,
+  visitor_key text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists trip_notes_slug_idx on public.trip_notes (slug, created_at desc);
+
+alter table public.trip_notes enable row level security;
+
+create or replace function public.trip_notes_list(p_slug text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.universes u
+    where u.slug = p_slug and u.status = 'published' and coalesce(u.document->>'kind', '') = 'viaje'
+  ) then
+    return '[]'::jsonb;
+  end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('id', n.id, 'body', n.body, 'at', n.created_at) order by n.created_at desc)
+    from public.trip_notes n
+    where n.slug = p_slug
+  ), '[]'::jsonb);
+end;
+$$;
+
+create or replace function public.trip_note_add(p_slug text, p_body text, p_visitor text default '')
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  note_body text;
+  total integer;
+begin
+  if not exists (
+    select 1 from public.universes u
+    where u.slug = p_slug and u.status = 'published' and coalesce(u.document->>'kind', '') = 'viaje'
+  ) then
+    raise exception 'missing_trip';
+  end if;
+  note_body := btrim(coalesce(p_body, ''));
+  if char_length(note_body) < 2 then
+    raise exception 'short_note';
+  end if;
+  if char_length(note_body) > 280 then
+    raise exception 'long_note';
+  end if;
+  select count(*) into total from public.trip_notes where slug = p_slug;
+  if total >= 200 then
+    raise exception 'full_notes';
+  end if;
+  insert into public.trip_notes (slug, body, visitor_key)
+  values (p_slug, note_body, left(coalesce(p_visitor, ''), 80));
+  return public.trip_notes_list(p_slug);
+end;
+$$;
+
+revoke all on function public.trip_notes_list(text) from public;
+revoke all on function public.trip_note_add(text, text, text) from public;
+grant execute on function public.trip_notes_list(text) to anon, authenticated;
+grant execute on function public.trip_note_add(text, text, text) to anon, authenticated;
