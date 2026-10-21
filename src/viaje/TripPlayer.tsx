@@ -59,11 +59,12 @@ export function TripPlayer({
       style={{
         background: look.map,
         color: '#f6efe6',
-        ['--frame-safe-top' as string]: framed ? '36px' : undefined,
+        ['--frame-safe-top' as string]: framed ? '36px' : nested ? '0px' : undefined,
         ['--frame-safe-bottom' as string]: framed ? '22px' : undefined,
+        ['--safe-top' as string]: nested ? '0px' : undefined,
       }}
     >
-      <div className={`absolute inset-x-0 top-0 ${slide || nested ? 'h-[22%]' : 'h-[34%]'}`}>
+      <div className={`absolute inset-x-0 top-0 ${slide ? 'h-[22%]' : nested ? 'h-[28%]' : 'h-[34%]'}`}>
         <TripMap
           points={pins}
           activeIndex={activePin != null && activePin >= 0 ? activePin : null}
@@ -83,7 +84,7 @@ export function TripPlayer({
 
       <section
         className={`absolute inset-x-0 bottom-0 flex flex-col shadow-[0_-12px_28px_rgba(0,0,0,0.22)] ${
-          slide || nested ? 'top-[18%] rounded-t-[22px]' : 'top-[31%] rounded-t-[26px]'
+          slide ? 'top-[18%] rounded-t-[22px]' : nested ? 'top-[25%] rounded-t-[22px]' : 'top-[31%] rounded-t-[26px]'
         }`}
         style={{ background: look.sheet, color: look.ink }}
       >

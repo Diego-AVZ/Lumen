@@ -18,7 +18,17 @@ const NO_LINES = ['No', '¿Seguro?', 'Mmm…', 'El otro', 'Ni se te ocurra', 'No
 
 type Spark = { id: number; dx: string; dy: string };
 
-export function DateAskPlayer({ doc, preview = false, nested = false }: { doc: DateAskDocument; preview?: boolean; nested?: boolean }) {
+export function DateAskPlayer({
+  doc,
+  preview = false,
+  nested = false,
+  framed = false,
+}: {
+  doc: DateAskDocument;
+  preview?: boolean;
+  nested?: boolean;
+  framed?: boolean;
+}) {
   const [clicks, setClicks] = useState(0);
   const [sparks, setSparks] = useState<Spark[]>([]);
   const [open, setOpen] = useState(false);
@@ -180,7 +190,21 @@ export function DateAskPlayer({ doc, preview = false, nested = false }: { doc: D
   );
 
   return (
-    <div ref={stage} className={`cita-room relative flex h-full flex-col items-center justify-center overflow-hidden px-5 py-10 text-[#f6ead8] ${nested ? 'min-h-0' : 'min-h-dvh'}`} onPointerMove={onMove}>
+    <div
+      ref={stage}
+      className={`cita-room relative flex h-full w-full flex-col items-center justify-center overflow-hidden px-5 py-10 text-[#f6ead8] ${framed || nested ? 'min-h-0' : 'min-h-dvh'}`}
+      style={
+        framed
+          ? ({
+              ['--frame-safe-top' as string]: '36px',
+              ['--frame-safe-bottom' as string]: '22px',
+              ['--safe-top' as string]: '36px',
+              ['--safe-bottom' as string]: '22px',
+            } as React.CSSProperties)
+          : undefined
+      }
+      onPointerMove={onMove}
+    >
       <p className="text-[11px] uppercase tracking-[0.22em] text-[#e8b86d]/80">
         {citaEyebrowText(doc)}
       </p>
@@ -294,19 +318,25 @@ export function DateAskPlayer({ doc, preview = false, nested = false }: { doc: D
         </div>
       )}
       {showTrip && (
-        <div className="absolute inset-0 z-[90] flex flex-col bg-[#122018]">
-          <button type="button" onClick={() => setShowTrip(false)} className="absolute left-4 top-[calc(var(--safe-top)+0.7rem)] z-[91] rounded-full bg-black/55 px-3 py-1.5 text-[12px] text-white">
-            Volver al sobre
-          </button>
-          {trip ? (
-            <Suspense fallback={<p className="m-auto text-[13px] text-white/60">Abriendo el viaje…</p>}>
-              <TripPlayer doc={trip} framed nested />
-            </Suspense>
-          ) : (
-            <p className="m-auto max-w-[16rem] text-center text-[15px] text-white/70">
-              {attached.state === 'draft' ? 'El viaje se abre cuando esté publicado.' : 'No encuentro el viaje.'}
-            </p>
-          )}
+        <div className="absolute inset-0 z-[90] flex min-h-0 flex-col bg-[#122018]">
+          <div className="flex shrink-0 items-center px-4 pb-2" style={{ paddingTop: 'calc(var(--safe-top, 0px) + 0.45rem)' }}>
+            <button type="button" onClick={() => setShowTrip(false)} className="rounded-full bg-white/10 px-3 py-1.5 text-[12px] text-white ring-1 ring-white/20">
+              Volver al sobre
+            </button>
+          </div>
+          <div className="relative min-h-0 flex-1">
+            {trip ? (
+              <div className="absolute inset-0">
+                <Suspense fallback={<p className="grid h-full place-items-center text-[13px] text-white/60">Abriendo el viaje…</p>}>
+                  <TripPlayer doc={trip} nested />
+                </Suspense>
+              </div>
+            ) : (
+              <p className="grid h-full place-items-center px-8 text-center text-[15px] text-white/70">
+                {attached.state === 'draft' ? 'El viaje se abre cuando esté publicado.' : 'No encuentro el viaje.'}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

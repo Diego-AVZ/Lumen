@@ -203,7 +203,7 @@ function ProjectStory({ id, cita, web, viaje }: { id: TemplateId; cita: DateAskD
       <div className="flex justify-center lg:justify-end">
         <WhenSeen height={868 * 0.54}>
           <ScaledPhone scale={0.54}>
-            {id === 'cita' && <DateAskPlayer doc={cita} preview />}
+            {id === 'cita' && <DateAskPlayer doc={cita} preview framed />}
             {id === 'web' && <WebPlayer doc={web} framed />}
             {id === 'viaje' && <TripPlayer doc={viaje} framed preview />}
             {id === 'carta' && <CartaSample />}

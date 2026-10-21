@@ -89,7 +89,7 @@ export function DateAskStudio({ id }: { id: string }) {
       <div className="grid min-h-0 flex-1 overflow-auto lg:grid-cols-[minmax(0,1fr)_380px] lg:overflow-hidden">
         <div className="min-h-[70vh] bg-mist lg:min-h-0">
           <PhoneStage>
-            <DateAskPlayer doc={doc} preview />
+            <DateAskPlayer doc={doc} preview framed />
           </PhoneStage>
         </div>
         <aside className="min-h-0 overflow-auto border-t border-black/5 bg-linen p-5 lg:border-l lg:border-t-0">
