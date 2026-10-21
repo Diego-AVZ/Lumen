@@ -26,6 +26,14 @@ export const TEMPLATES = [
     sky: 'linear-gradient(165deg, #3a2418 0%, #0c0b0a 46%, #070606 100%)',
   },
   {
+    id: 'web',
+    name: 'Web personalizada',
+    tag: 'Lista ahora',
+    line: 'Una página vuestra. Textos, fotos, música, un mapa y sitios que se abren si sabes la respuesta.',
+    available: true,
+    sky: 'linear-gradient(165deg, #4a3424 0%, #1c1612 48%, #0e0c0a 100%)',
+  },
+  {
     id: 'deseos',
     name: 'Lista de deseos',
     tag: 'Lista ahora',

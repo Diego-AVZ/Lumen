@@ -15,7 +15,7 @@ export type DraftSummary = {
   updatedAt: string;
   slug: string;
   status: 'draft' | 'published';
-  kind: 'universo' | 'cita' | 'deseos';
+  kind: 'universo' | 'cita' | 'deseos' | 'web';
 };
 
 function asSummary(row: CloudUniverse): DraftSummary {

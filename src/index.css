@@ -945,9 +945,41 @@ button {
   50% { transform: rotate(-45deg) translateY(-5px); }
 }
 
+.web-heart {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border: 0;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #ff6b7a, #b4233a 62%, #7a1224);
+  box-shadow: 0 10px 22px rgba(140, 20, 40, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: #fff6ea;
+  cursor: pointer;
+}
+
+.web-heart-hot {
+  box-shadow: 0 10px 22px rgba(140, 20, 40, 0.35), 0 0 0 8px rgba(255, 120, 140, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.web-heart-ring {
+  position: absolute;
+  inset: -7px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 186, 196, 0.55);
+  animation: cita-ring 1.35s ease-out infinite;
+  pointer-events: none;
+}
+
+.web-shake {
+  animation: cita-shake 0.35s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sky-star, .animate-rise, .animate-depth,
   .gift-peek-bob, .gift-mini-star, .gift-mini-fall,
   .gift-mini-flap, .gift-mini-letter, .gift-mini-polaroid,
-  .gift-mini-pin, .gift-mini-ring, .gift-mini-sheet { animation: none; }
+  .gift-mini-pin, .gift-mini-ring, .gift-mini-sheet,
+  .web-heart-ring { animation: none; }
 }

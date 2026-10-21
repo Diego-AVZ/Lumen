@@ -36,8 +36,8 @@ export const PLANS: PlanOffer[] = [
     family: 'plantilla',
     name: 'Plantilla basic',
     priceCents: 1295,
-    line: 'Un universo, con un techo claro.',
-    points: ['Universo, y las plantillas que vengan', '5 fotos, 1 audio, 10 lugares', 'El estudio para montarlo'],
+    line: 'Un universo o una web, con un techo claro.',
+    points: ['Universo y web personalizada', '5 fotos, 1 audio, 10 lugares', 'El estudio para montarlo'],
   },
   {
     id: 'plantilla_pro',
@@ -52,7 +52,7 @@ export const PLANS: PlanOffer[] = [
 
 export const PLAN_GROUPS: { id: PlanFamily; label: string; hint: string }[] = [
   { id: 'cita', label: 'Sobres', hint: 'Pedir cita' },
-  { id: 'plantilla', label: 'Plantillas', hint: 'Universo y las que vengan' },
+  { id: 'plantilla', label: 'Plantillas', hint: 'Universo, web y las que vengan' },
 ];
 
 export const CHAINS = [

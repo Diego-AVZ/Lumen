@@ -18,7 +18,7 @@ import { PublishDialog } from '@/studio/PublishDialog';
 import { useDraft } from '@/studio/useDraft';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
 import { PriceTag } from '@/hub/PriceTag';
-import { isCita, isDeseos } from '@/schema/project';
+import { isCita, isDeseos, isWeb } from '@/schema/project';
 
 type Mode = 'portada' | 'cielo' | 'dentro';
 
@@ -387,7 +387,7 @@ function UniverseStudio() {
           doc={doc}
           onClose={() => setPublishing(false)}
           onPublished={(next) => {
-            if (isCita(next) || isDeseos(next)) return;
+            if (isCita(next) || isDeseos(next) || isWeb(next)) return;
             draft.setDoc(next);
             void saveDraft(next);
           }}

@@ -8,6 +8,8 @@ import type { PlayerFrame } from '@/universe/UniversePlayer';
 import type { Star, UniverseDocument } from '@/schema/universe';
 import { PhoneChrome } from '@/studio/PhoneStage';
 import { UniversePlayer } from '@/universe/UniversePlayer';
+import { WebPlayer } from '@/web/WebPlayer';
+import { sampleWeb, type WebDocument } from '@/schema/web';
 
 const TOUR: { label: string; frame: PlayerFrame; star: string | null; wait: number }[] = [
   { label: 'La dedicatoria', frame: 'intro', star: null, wait: 2600 },
@@ -141,7 +143,7 @@ function HeroTour({ doc }: { doc: UniverseDocument }) {
   );
 }
 
-function ProjectStory({ id, cita }: { id: TemplateId; cita: DateAskDocument }) {
+function ProjectStory({ id, cita, web }: { id: TemplateId; cita: DateAskDocument; web: WebDocument }) {
   const story = {
     cita: {
       kicker: 'El sobre',
@@ -173,6 +175,12 @@ function ProjectStory({ id, cita }: { id: TemplateId; cita: DateAskDocument }) {
       line: 'Dónde estuvisteis, y qué pasó ahí.',
       body: 'La orilla, el café, la esquina donde os quedasteis. En cada sitio, una frase de lo que ocurrió. Se leen en lista y, si quieres, encima del mapa. Para volver a un lugar sin tener que explicarlo entero.',
     },
+    web: {
+      kicker: 'La página',
+      title: 'Web personalizada',
+      line: 'Como el universo, en formato web.',
+      body: 'Textos, fotos, audios y un enlace de Spotify. Un sitio puede pedir una respuesta antes de abrirse. Un corazón se toca, como en la cita, y detrás hay un detalle o una foto. La lista no es un cielo: cada cierto tiempo se elige entre dos planes y la elección se queda. Y hay mapa. La base son 12,95 €. Se cobra al publicar.',
+    },
   } as const;
   if (id === 'universo') return null;
   const item = story[id];
@@ -188,6 +196,7 @@ function ProjectStory({ id, cita }: { id: TemplateId; cita: DateAskDocument }) {
         <WhenSeen height={868 * 0.54}>
           <ScaledPhone scale={0.54}>
             {id === 'cita' && <DateAskPlayer doc={cita} preview />}
+            {id === 'web' && <WebPlayer doc={web} framed />}
             {id === 'carta' && <CartaSample />}
             {id === 'album' && <AlbumSample />}
             {id === 'mapa' && <MapaSample />}
@@ -278,6 +287,7 @@ export function Landing() {
     doc.envelope = 'Ábrelo cuando puedas';
     return doc;
   }, []);
+  const webDemo = useMemo(() => sampleWeb(), []);
   const scenes = useMemo(() => {
     const base = exampleDocument();
     const byType = (type: Star['type']) => base.stars.find((star) => star.type === type);
@@ -487,7 +497,7 @@ export function Landing() {
               No tiene que ser un cielo.
             </h2>
             <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-[#f3ead8]/70">
-              En crear eliges el regalo. Un universo, una cita, una lista de deseos, una carta, un álbum o un mapa. Toca uno y ves qué cabe dentro.
+              En crear eliges el regalo. Un universo, una web, una cita, una lista de deseos, una carta, un álbum o un mapa. Toca uno y ves qué cabe dentro.
             </p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -540,7 +550,7 @@ export function Landing() {
             </div>
             )}
 
-            {project !== 'universo' && <ProjectStory id={project} cita={citaDemo} />}
+            {project !== 'universo' && <ProjectStory id={project} cita={citaDemo} web={webDemo} />}
           </div>
         </section>
 

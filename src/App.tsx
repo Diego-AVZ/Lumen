@@ -11,12 +11,14 @@ const Begin = lazy(() => import('@/pages/Begin').then((m) => ({ default: m.Begin
 const Studio = lazy(() => import('@/pages/Studio').then((m) => ({ default: m.Studio })));
 const DateAskStudio = lazy(() => import('@/pages/DateAskStudio').then((m) => ({ default: m.DateAskStudio })));
 const DeseosStudio = lazy(() => import('@/pages/DeseosStudio').then((m) => ({ default: m.DeseosStudio })));
+const WebStudio = lazy(() => import('@/pages/WebStudio').then((m) => ({ default: m.WebStudio })));
 const Missing = lazy(() => import('@/pages/Missing').then((m) => ({ default: m.Missing })));
 
 function ProjectStudio() {
   const { id = '' } = useParams();
   if (id.startsWith('cita_')) return <DateAskStudio id={id} />;
   if (id.startsWith('deseos_')) return <DeseosStudio id={id} />;
+  if (id.startsWith('web_')) return <WebStudio id={id} />;
   return <Studio />;
 }
 

@@ -10,10 +10,11 @@ import { TEMPLATES, type TemplateId } from '@/hub/catalog';
 import { GiftPeek } from '@/hub/GiftPeek';
 import { PriceTag } from '@/hub/PriceTag';
 import { documentFromEasy, EMPTY_EASY, type EasyAnswers } from '@/studio/easyUniverse';
+import { blankWeb, sampleWeb } from '@/schema/web';
 import { CitaCreate } from '@/pages/CitaCreate';
 import { DeseosCreate } from '@/pages/DeseosCreate';
 
-type Phase = 'plantilla' | 'modo' | 'nombres' | 'wizard' | 'cita' | 'deseos';
+type Phase = 'plantilla' | 'modo' | 'nombres' | 'wizard' | 'cita' | 'deseos' | 'web';
 type Mode = 'facil' | 'max';
 
 const WIZARD: {
@@ -83,6 +84,7 @@ export function Begin() {
   const [phase, setPhase] = useState<Phase>(() => {
     if (params.get('plantilla') === 'cita') return 'cita';
     if (params.get('plantilla') === 'deseos') return 'deseos';
+    if (params.get('plantilla') === 'web') return 'web';
     if (params.get('modo') === 'facil') return 'wizard';
     if (params.get('modo') === 'max') return 'nombres';
     if (params.get('plantilla')) return 'modo';
@@ -108,7 +110,7 @@ export function Begin() {
   }, [answers]);
 
   useEffect(() => {
-    if (plantilla && plantilla !== 'universo' && plantilla !== 'cita' && plantilla !== 'deseos') {
+    if (plantilla && plantilla !== 'universo' && plantilla !== 'cita' && plantilla !== 'deseos' && plantilla !== 'web') {
       setSoon(plantilla);
       params.delete('plantilla');
       params.delete('modo');
@@ -125,7 +127,7 @@ export function Begin() {
     setError('');
     haptic('light');
     setParams({ plantilla: id });
-    setPhase(id === 'cita' ? 'cita' : id === 'deseos' ? 'deseos' : 'modo');
+    setPhase(id === 'cita' ? 'cita' : id === 'deseos' ? 'deseos' : id === 'web' ? 'web' : 'modo');
   };
 
   const pickMode = (next: Mode) => {
@@ -149,6 +151,32 @@ export function Begin() {
       doc.intro.forName = forName.trim();
       doc.intro.fromName = fromName.trim();
       doc.meta.title = forName.trim() ? `Para ${forName.trim()}` : 'Universo sin nombre';
+    }
+    void saveDraft(doc)
+      .then(() => {
+        haptic('success');
+        navigate(`/crear/${doc.meta.id}`);
+      })
+      .catch((err: unknown) => {
+        creating.current = false;
+        setError(err instanceof Error ? err.message : 'No se pudo abrir.');
+      });
+  };
+
+  const startWeb = (example: boolean) => {
+    if (creating.current) return;
+    creating.current = true;
+    setError('');
+    const doc = example ? sampleWeb() : blankWeb();
+    if (example) {
+      doc.meta.id = uid('web');
+      doc.meta.status = 'draft';
+      doc.meta.slug = '';
+      delete doc.meta.publishedAt;
+    } else {
+      doc.intro.forName = forName.trim();
+      doc.intro.fromName = fromName.trim();
+      doc.meta.title = forName.trim() ? `Para ${forName.trim()}` : 'Web sin nombre';
     }
     void saveDraft(doc)
       .then(() => {
@@ -195,6 +223,13 @@ export function Begin() {
     doc.meta.title = forName.trim() ? `Para ${forName.trim()}` : 'Universo sin nombre';
     return doc;
   }, [forName, fromName]);
+  const namedWeb = useMemo(() => {
+    const doc = blankWeb();
+    doc.intro.forName = forName.trim();
+    doc.intro.fromName = fromName.trim();
+    doc.meta.title = forName.trim() ? `Para ${forName.trim()}` : 'Web sin nombre';
+    return doc;
+  }, [forName, fromName]);
 
   return (
     <HubShell>
@@ -215,6 +250,52 @@ export function Begin() {
             }}
           />
         )}
+        {phase === 'web' && (
+          <div className="mx-auto max-w-xl pt-4">
+            <button type="button" onClick={() => { setPhase('plantilla'); setParams({}); }} className="text-[13px] text-inkwell/45">
+              ← Plantillas
+            </button>
+            <p className="mt-6 text-[12px] uppercase tracking-[0.22em] text-brass">Web personalizada</p>
+            <h1 className="mt-3 font-display text-[clamp(2.6rem,6vw,4.4rem)] italic leading-[0.95]">¿Para quién es la web?</h1>
+            <p className="mt-4 max-w-md text-[17px] leading-relaxed text-inkwell/60">
+              Una página, no un cielo. Textos, fotos, música, un mapa y sitios que se abren con una respuesta. La base son 12,95 €. Se cobra al publicar.
+            </p>
+            <label className="mt-8 block">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Su nombre</span>
+              <input
+                autoFocus
+                value={forName}
+                onChange={(e) => setForName(e.target.value)}
+                placeholder="Clara"
+                className="mt-2 w-full border-b border-black/15 bg-transparent py-3 font-display text-4xl italic outline-none placeholder:text-inkwell/20"
+              />
+            </label>
+            <label className="mt-6 block">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">De parte de</span>
+              <input
+                value={fromName}
+                onChange={(e) => setFromName(e.target.value)}
+                placeholder="Opcional"
+                className="mt-2 w-full border-b border-black/10 bg-transparent py-3 text-2xl outline-none placeholder:text-inkwell/25"
+              />
+            </label>
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                disabled={!forName.trim()}
+                onClick={() => startWeb(false)}
+                className="rounded-full bg-inkwell px-6 py-3 text-linen disabled:opacity-30"
+              >
+                Abrir el estudio
+              </button>
+              <button type="button" onClick={() => startWeb(true)} className="text-[14px] text-brass">
+                Prefiero un ejemplo
+              </button>
+              <PriceTag doc={namedWeb} />
+            </div>
+            {error && <p className="mt-4 text-[15px] text-[#8a3d32]">{error}</p>}
+          </div>
+        )}
         {phase === 'plantilla' && (
           <>
             <p className="text-[12px] uppercase tracking-[0.22em] text-brass">Crear</p>
@@ -222,7 +303,7 @@ export function Begin() {
               Elige el regalo
             </h1>
             <p className="mt-4 max-w-xl text-[17px] leading-relaxed text-inkwell/60">
-              Sobre, universo o una lista de deseos. Crear es gratis. El precio se ve mientras lo haces y se cobra al publicar.
+              Sobre, universo, web o una lista de deseos. Crear es gratis. El precio se ve mientras lo haces y se cobra al publicar.
             </p>
             <ul className="mt-10 grid gap-4 md:grid-cols-2">
               {TEMPLATES.map((item) => (

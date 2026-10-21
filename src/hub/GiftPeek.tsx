@@ -22,6 +22,7 @@ export function GiftPeek({ id }: { id: TemplateId }) {
             {id === 'carta' && <CartaMini />}
             {id === 'album' && <AlbumMini />}
             {id === 'mapa' && <MapaMini />}
+            {id === 'web' && <WebMini />}
           </div>
         </div>
       </div>
@@ -110,6 +111,18 @@ function AlbumMini() {
       <div className="gift-mini-polaroid absolute right-[16%] top-[34%] h-[4.4rem] w-16 rotate-[8deg] bg-[#f7f1e4] p-1 shadow-[0_12px_20px_rgba(0,0,0,0.4)]">
         <span className="block h-12 w-full bg-[#8a6232]" />
       </div>
+    </div>
+  );
+}
+
+function WebMini() {
+  return (
+    <div className="relative flex h-full flex-col bg-[#f6efe6] px-3 pt-8 text-[#1b1612]">
+      <p className="text-[6px] uppercase tracking-[0.18em] text-[#8a6232]">Para Clara</p>
+      <p className="mt-1 font-display text-[1.05rem] italic leading-none">Una web</p>
+      <span className="mt-3 grid h-7 w-7 place-items-center rounded-full bg-[#b4233a] text-[11px] text-white">♥</span>
+      <span className="mt-3 block h-px w-10 bg-black/15" />
+      <span className="mt-2 block h-px w-14 bg-black/10" />
     </div>
   );
 }

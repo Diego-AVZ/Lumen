@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { listDrafts, loadDraft, purgeProject, saveDraft, type DraftSummary } from '@/lib/drafts';
 import { AccountBar } from '@/studio/AccountBar';
-import { isCita, isDeseos, kindLabel, parseProject, projectTitle } from '@/schema/project';
+import { isCita, isDeseos, isWeb, kindLabel, parseProject, projectTitle } from '@/schema/project';
 import { exampleDocument } from '@/schema/example';
 import { uid } from '@/lib/motion';
 import { HubShell } from '@/hub/HubShell';
@@ -79,7 +79,7 @@ function ProjectsPanel() {
         </Link>
       </div>
       <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-inkwell/60">
-        Universos, citas y listas de deseos. Si te invitan a una lista, aparece aquí al entrar con ese correo.
+        Universos, webs, citas y listas de deseos. Si te invitan a una lista, aparece aquí al entrar con ese correo.
       </p>
       {note && <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[#8a3d32]">{note}</p>}
 
@@ -156,7 +156,7 @@ function ProjectsPanel() {
                       const source = await loadDraft(row.id);
                       if (!source) return;
                       const copy = parseProject(JSON.parse(JSON.stringify(source)));
-                      copy.meta.id = isCita(copy) ? uid('cita') : isDeseos(copy) ? uid('deseos') : uid('uni');
+                      copy.meta.id = isCita(copy) ? uid('cita') : isDeseos(copy) ? uid('deseos') : isWeb(copy) ? uid('web') : uid('uni');
                       copy.meta.slug = '';
                       copy.meta.status = 'draft';
                       copy.meta.publishedAt = undefined;

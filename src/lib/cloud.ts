@@ -218,7 +218,7 @@ function asGiftRead(raw: unknown): GiftRead | null {
   if (rec.state === 'locked' || rec.state === 'wrong' || rec.state === 'missing') {
     return { state: rec.state, doc: null };
   }
-  if (rec.kind === 'cita' || rec.kind === 'deseos' || rec.stars) return { state: 'open', doc: decodeDocument(rec) };
+  if (rec.kind === 'cita' || rec.kind === 'deseos' || rec.kind === 'web' || rec.stars || rec.pages) return { state: 'open', doc: decodeDocument(rec) };
   return null;
 }
 
@@ -288,12 +288,13 @@ export type CloudUniverse = {
   slug: string;
   status: 'draft' | 'published';
   updatedAt: string;
-  kind: 'universo' | 'cita' | 'deseos';
+  kind: 'universo' | 'cita' | 'deseos' | 'web';
 };
 
-function kindOfId(id: string): 'universo' | 'cita' | 'deseos' {
+function kindOfId(id: string): 'universo' | 'cita' | 'deseos' | 'web' {
   if (id.startsWith('cita_')) return 'cita';
   if (id.startsWith('deseos_')) return 'deseos';
+  if (id.startsWith('web_')) return 'web';
   return 'universo';
 }
 

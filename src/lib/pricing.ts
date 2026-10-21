@@ -1,6 +1,7 @@
 import { CITA_PHRASES, citaEyebrowText, type DateAskDocument } from '@/schema/cita';
 import type { DeseosDocument } from '@/schema/deseos';
-import { isCita, isDeseos, type ProjectDocument } from '@/schema/project';
+import { isCita, isDeseos, isWeb, type ProjectDocument } from '@/schema/project';
+import type { WebDocument } from '@/schema/web';
 import type { UniverseDocument } from '@/schema/universe';
 import type { PlanFamily } from '@/lib/plans';
 
@@ -87,9 +88,22 @@ export type Quote = {
   lines: QuoteLine[];
 };
 
+const WEB_PRICE: PriceBook = {
+  id: 'plantilla',
+  name: 'Web',
+  baseCents: PRICE.plantilla.baseCents,
+  meters: PRICE.plantilla.meters,
+  features: [
+    { id: 'music', label: 'Música', cents: 200 },
+    { id: 'prueba', label: 'Prueba', cents: 100 },
+    { id: 'detalle', label: 'Detalle', cents: 150 },
+  ],
+};
+
 export function priceOf(doc: ProjectDocument): Quote {
   if (isCita(doc)) return quoteCita(doc);
   if (isDeseos(doc)) return quoteDeseos(doc);
+  if (isWeb(doc)) return quoteWeb(doc);
   return quoteUniverse(doc);
 }
 
@@ -101,6 +115,14 @@ function quoteCita(doc: DateAskDocument): Quote {
 
 function quoteDeseos(_doc: DeseosDocument): Quote {
   return build(PRICE.deseos, {}, { mantenimiento: true });
+}
+
+function quoteWeb(doc: WebDocument): Quote {
+  return build(WEB_PRICE, webCounts(doc), {
+    music: Boolean(doc.soundtrack.url.trim()) || doc.pages.some((page) => page.blocks.some((block) => block.type === 'spotify' && block.url.trim())),
+    prueba: doc.pages.some((page) => page.quiz.question.trim() && page.quiz.answers.some((answer) => answer.trim())),
+    detalle: doc.pages.some((page) => page.blocks.some((block) => block.type === 'corazon')),
+  });
 }
 
 function quoteUniverse(doc: UniverseDocument): Quote {
@@ -195,6 +217,38 @@ function universeCounts(doc: UniverseDocument) {
     } else if (star.type === 'secreto') {
       bits.push(star.phrase, star.hint);
       star.entries.forEach((entry) => bits.push(entry.title, entry.body));
+    }
+  }
+  return { photos, audios, places, chars: lengthOf(...bits) };
+}
+
+function webCounts(doc: WebDocument) {
+  let photos = 0;
+  let audios = 0;
+  let places = 0;
+  const bits = [doc.meta.title, doc.intro.forName, doc.intro.fromName, doc.intro.line, doc.soundtrack.label];
+  for (const page of doc.pages) {
+    bits.push(page.title, page.nav, page.quiz.question, page.quiz.hint, ...page.quiz.answers);
+    for (const block of page.blocks) {
+      if (block.type === 'texto') bits.push(block.kicker, block.title, block.body);
+      else if (block.type === 'imagen') {
+        if (block.src.trim()) photos += 1;
+        bits.push(block.caption);
+      } else if (block.type === 'audio') {
+        if (block.url.trim()) audios += 1;
+        bits.push(block.label);
+      } else if (block.type === 'spotify') bits.push(block.label);
+      else if (block.type === 'corazon') {
+        if (block.photo.trim()) photos += 1;
+        bits.push(block.line, block.detail);
+      } else if (block.type === 'lista') {
+        bits.push(block.intro);
+        block.rounds.forEach((round) => bits.push(round.title, round.a.title, round.a.body, round.b.title, round.b.body));
+      } else if (block.type === 'mapa') {
+        bits.push(block.intro);
+        places += block.places.filter((place) => place.title.trim() || place.lat.trim()).length;
+        block.places.forEach((place) => bits.push(place.title, place.body));
+      }
     }
   }
   return { photos, audios, places, chars: lengthOf(...bits) };
