@@ -151,24 +151,23 @@ export function TripStudio({ id }: { id: string }) {
   };
 
   const money = tripMoney(doc);
-  const currentStop = focus && focus !== TRIP_SLIDE ? focus : doc.stops[0]?.id ?? null;
   const rackItems: { key: string; label: string; node: ReactNode }[] = [
     { key: 'route', label: 'Recorrido', node: <TripPlayer doc={doc} framed stopId={null} onStop={() => undefined} /> },
+    ...doc.stops.map((stop, index) => ({
+      key: stop.id,
+      label: stop.title.trim() || `Parada ${index + 1}`,
+      node: <TripPlayer doc={doc} framed stopId={stop.id} onStop={() => undefined} />,
+    })),
+    ...(money
+      ? [
+          {
+            key: 'slide',
+            label: 'Diapositiva',
+            node: <TripPlayer doc={doc} framed stopId={TRIP_SLIDE} onStop={() => undefined} />,
+          },
+        ]
+      : []),
   ];
-  if (currentStop) {
-    rackItems.push({
-      key: 'stop',
-      label: doc.stops.find((stop) => stop.id === currentStop)?.title.trim() || 'Parada',
-      node: <TripPlayer doc={doc} framed stopId={currentStop} onStop={() => undefined} />,
-    });
-  }
-  if (money) {
-    rackItems.push({
-      key: 'slide',
-      label: 'Diapositiva',
-      node: <TripPlayer doc={doc} framed stopId={TRIP_SLIDE} onStop={() => undefined} />,
-    });
-  }
 
   return (
     <div className="flex h-dvh flex-col bg-linen text-inkwell">

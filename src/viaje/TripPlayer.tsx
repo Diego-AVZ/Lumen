@@ -19,9 +19,11 @@ export function TripPlayer({
   onDrop?: (lat: number, lng: number) => void;
 }) {
   const [own, setOwn] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<string | null>(null);
   const openId = onStop ? (stopId ?? null) : own;
   const money = tripMoney(doc);
   const go = (id: string | null) => {
+    setPhoto(null);
     haptic(id && id !== TRIP_SLIDE ? 'light' : 'medium');
     if (onStop) onStop(id);
     else setOwn(id);
@@ -76,7 +78,13 @@ export function TripPlayer({
           {slide && money ? (
             <MoneySlide money={money} />
           ) : stop ? (
-            <StopView stop={stop} index={index} total={doc.stops.length} currency={doc.budget.currency} />
+            <StopView
+              stop={stop}
+              index={index}
+              total={doc.stops.length}
+              currency={doc.budget.currency}
+              onOpenPhoto={setPhoto}
+            />
           ) : (
             <Overview doc={doc} onOpen={go} />
           )}
@@ -143,6 +151,16 @@ export function TripPlayer({
           )}
         </footer>
       </section>
+      {photo && (
+        <button
+          type="button"
+          onClick={() => setPhoto(null)}
+          className="absolute inset-0 z-[80] flex flex-col bg-[#0c0b0a]/94 px-3 pb-[calc(var(--safe-bottom)+1rem)] pt-[calc(var(--safe-top)+2.4rem)]"
+        >
+          <img src={photo} alt="" className="min-h-0 w-full flex-1 object-contain" />
+          <span className="mt-3 text-center text-[12px] uppercase tracking-[0.16em] text-white/55">Toca para cerrar</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -183,11 +201,13 @@ function StopView({
   index,
   total,
   currency,
+  onOpenPhoto,
 }: {
   stop: TripStop;
   index: number;
   total: number;
   currency: TripDocument['budget']['currency'];
+  onOpenPhoto: (src: string) => void;
 }) {
   const todos = stop.todo.map((item) => item.trim()).filter(Boolean);
   const amount = stop.cost.trim();
@@ -207,11 +227,20 @@ function StopView({
         {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
       </p>
       {stop.photo.trim() ? (
-        <img src={stop.photo} alt="" className="mt-3 aspect-[16/10] w-full rounded-[18px] object-cover" />
+        <button
+          type="button"
+          onClick={() => {
+            haptic('light');
+            onOpenPhoto(stop.photo);
+          }}
+          className="mt-3 block w-full text-left"
+        >
+          <img src={stop.photo} alt="" className="aspect-[16/10] w-full rounded-[18px] object-cover" />
+        </button>
       ) : (
-        <div className="mt-3">
-          <Thumb stop={stop} index={index} wide />
-        </div>
+        <span className="mt-3 grid h-9 w-9 place-items-center rounded-full bg-[#e4d3b8] font-display text-[0.95rem] italic text-[#1b1612]/50">
+          {index + 1}
+        </span>
       )}
       <h2 className="mt-4 font-display text-[2rem] italic leading-[0.98]">{stop.title.trim() || 'Sin nombre'}</h2>
       {stop.body.trim() && <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-[#1b1612]/75">{stop.body.trim()}</p>}
@@ -290,13 +319,13 @@ function formatStopCost(raw: string, currency: TripDocument['budget']['currency'
   return value == null ? raw : formatMoney(value, currency);
 }
 
-function Thumb({ stop, index, wide = false }: { stop: TripStop; index: number; wide?: boolean }) {
+function Thumb({ stop, index }: { stop: TripStop; index: number }) {
   return (
-    <span className={`relative block overflow-hidden rounded-[16px] bg-[#e4d3b8] ${wide ? 'aspect-[16/10] w-full' : 'aspect-[4/3]'}`}>
+    <span className="relative block aspect-[4/3] overflow-hidden rounded-[16px] bg-[#e4d3b8]">
       {stop.photo.trim() ? (
         <img src={stop.photo} alt="" className="h-full w-full object-cover" />
       ) : (
-        <span className="grid h-full place-items-center font-display text-3xl italic text-[#1b1612]/70">{index + 1}</span>
+        <span className="grid h-full place-items-center font-display text-lg italic text-[#1b1612]/45">{index + 1}</span>
       )}
     </span>
   );

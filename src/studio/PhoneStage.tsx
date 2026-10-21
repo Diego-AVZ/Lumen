@@ -42,13 +42,14 @@ export function PhoneRack({
   items: { key: string; label: string; node: ReactNode }[];
 }) {
   const box = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.42);
 
   useEffect(() => {
     const el = box.current;
     if (!el) return;
     const fit = () => {
-      const h = el.clientHeight - 36;
+      const h = el.clientHeight - 44;
       if (h < 80) return;
       setScale(Math.min(h / H, 0.58));
     };
@@ -58,19 +59,34 @@ export function PhoneRack({
     return () => watcher.disconnect();
   }, [items.length]);
 
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const onWheel = (event: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth) return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      el.scrollLeft += event.deltaY;
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [items.length]);
+
   return (
-    <div ref={box} className="relative min-h-0 flex-1 overflow-x-auto">
-      <div className="flex h-full min-w-full items-center justify-center gap-6 px-5 pb-6">
-        {items.map((item) => (
-          <div key={item.key} className="shrink-0">
-            <div style={{ width: W * scale, height: H * scale }}>
-              <div style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-                <PhoneChrome>{item.node}</PhoneChrome>
+    <div ref={box} className="relative min-h-0 flex-1 overflow-hidden">
+      <div ref={scroller} className="phone-rack absolute inset-0 overflow-x-auto overflow-y-hidden">
+        <div className="flex h-full w-max items-center gap-6 px-5 pb-6">
+          {items.map((item) => (
+            <div key={item.key} className="shrink-0">
+              <div style={{ width: W * scale, height: H * scale }}>
+                <div style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+                  <PhoneChrome>{item.node}</PhoneChrome>
+                </div>
               </div>
+              <p className="mt-2 text-center text-[11px] uppercase tracking-[0.16em] text-white/55">{item.label}</p>
             </div>
-            <p className="mt-2 text-center text-[11px] uppercase tracking-[0.16em] text-white/55">{item.label}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

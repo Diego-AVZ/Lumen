@@ -1021,6 +1021,20 @@ button {
   color: #1b1612;
 }
 
+.phone-rack {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(246, 239, 230, 0.35) transparent;
+}
+
+.phone-rack::-webkit-scrollbar {
+  height: 8px;
+}
+
+.phone-rack::-webkit-scrollbar-thumb {
+  background: rgba(246, 239, 230, 0.35);
+  border-radius: 999px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sky-star, .animate-rise, .animate-depth,
   .gift-peek-bob, .gift-mini-star, .gift-mini-fall,
