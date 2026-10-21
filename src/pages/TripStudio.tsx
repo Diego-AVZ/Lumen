@@ -8,7 +8,9 @@ import { compressImage } from '@/lib/images';
 import { uid } from '@/lib/motion';
 import { isViaje } from '@/schema/project';
 import { coordsLabel, parseLatLngPair } from '@/universe/coords';
-import { TRIP_SLIDE, createStop, parseTrip, tripTitle, type TripBudget, type TripDocument, type TripStop } from '@/schema/viaje';
+import { AttachPicker } from '@/attach/AttachPicker';
+import { fromDateTime, toDateInput, toTimeInput } from '@/schema/cita';
+import { TRIP_LOOKS, TRIP_SLIDE, createStop, parseTrip, tripTitle, type TripBudget, type TripDocument, type TripStop } from '@/schema/viaje';
 import { PhoneRack, PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
 import { pinOf } from '@/viaje/TripMap';
@@ -189,6 +191,18 @@ export function TripStudio({ id }: { id: string }) {
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-inkwell/50">
             Toca el mapa del teléfono para dejar una parada. Lo vacío no sale.
           </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {TRIP_LOOKS.map((look) => (
+              <button
+                key={look.id}
+                type="button"
+                onClick={() => edit((current) => ({ ...current, look: look.id }))}
+                className={`rounded-full px-2.5 py-1 text-[12px] ${doc.look === look.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+              >
+                {look.name}
+              </button>
+            ))}
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-2.5">
             <Field label="Para">
               <input className={input} value={doc.intro.forName} placeholder="Clara" onChange={(event) => patchIntro({ forName: event.target.value })} />
@@ -434,6 +448,50 @@ function StopEditor({
             )}
           </div>
           {uploadError && <p className="mt-2 text-[12px] text-[#8a3d32]">{uploadError}</p>}
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-inkwell/40">Sobre en este punto</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-inkwell/45">Se abre un día y una hora. Dentro va una cita ya publicada.</p>
+          <div className="mt-2">
+            <AttachPicker
+              kind="cita"
+              value={stop.seal}
+              onChange={(cita) =>
+                onChange((current) => ({
+                  ...current,
+                  seal: cita ? { ...cita, opensAt: current.seal?.opensAt || '' } : null,
+                }))
+              }
+            />
+          </div>
+          {stop.seal && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Field label="Día">
+                <input
+                  type="date"
+                  className={input}
+                  value={toDateInput(stop.seal.opensAt)}
+                  onChange={(event) =>
+                    onChange((current) =>
+                      current.seal ? { ...current, seal: { ...current.seal, opensAt: fromDateTime(event.target.value, toTimeInput(current.seal.opensAt) || '20:00') } } : current,
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Hora">
+                <input
+                  type="time"
+                  className={input}
+                  value={toTimeInput(stop.seal.opensAt)}
+                  onChange={(event) =>
+                    onChange((current) =>
+                      current.seal ? { ...current, seal: { ...current.seal, opensAt: fromDateTime(toDateInput(current.seal.opensAt), event.target.value) } } : current,
+                    )
+                  }
+                />
+              </Field>
+            </div>
+          )}
         </div>
         <Field label="En el mapa" hint="Toca el satélite o pega coordenadas.">
           <input

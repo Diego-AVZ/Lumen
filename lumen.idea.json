@@ -82,7 +82,7 @@
     },
     "viaje": {
       "queEs": "Un recorrido en satélite. Primero se ve entero. Luego, parada a parada.",
-      "queLleva": "En cada parada, lo que se rellene: título, descripción, foto, tiempo aquí, dónde se duerme, dónde se come, cómo se llega, una nota, cosas que hacer y un estimado. El mapa es satélite con nombres. Se toca para dejar la coordenada. Al final están las cuentas: total, por persona y por día, en euros o dólares. Quien tiene el enlace puede dejar una nota de lo que ha pagado.",
+      "queLleva": "En cada parada, lo que se rellene. El mapa es satélite con nombres y varios colores. En un punto se puede dejar un sobre de cita ya publicado: se abre un día y una hora. Al final están las cuentas. Quien tiene el enlace puede dejar una nota de lo que ha pagado. El sobre y el viaje se publican y se pagan cada uno.",
       "precio": "Misma familia que la plantilla básica: base 12,95 €. Las paradas cuentan como lugares y las fotos como fotos. Se cobra al publicar, la diferencia si ya había saldo de plantilla."
     },
     "cita": {

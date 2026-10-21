@@ -1,5 +1,7 @@
 import { isPlanId } from '@/lib/plans';
 import { uid } from '@/lib/motion';
+import { parseAttachment, type Attachment } from '@/schema/attach';
+import { parseWhen, prettyWhen } from '@/schema/cita';
 import type { Meta } from '@/schema/universe';
 
 /**
@@ -26,6 +28,31 @@ export type TripBudget = {
   note: string;
 };
 
+export const TRIP_LOOKS = [
+  { id: 'lino', name: 'Lino', map: '#122018', sheet: '#f6efe6', ink: '#1b1612', accent: '#8a6232', soft: '#e4d3b8' },
+  { id: 'noche', name: 'Noche', map: '#0c0b0a', sheet: '#1c1714', ink: '#f6efe6', accent: '#e8b86d', soft: '#3a3028' },
+  { id: 'mar', name: 'Mar', map: '#07141c', sheet: '#e7eef2', ink: '#071018', accent: '#3d6d86', soft: '#c5d5de' },
+  { id: 'rosa', name: 'Rosa', map: '#1a1014', sheet: '#f8efe8', ink: '#2a1614', accent: '#a24b4b', soft: '#f0d2c8' },
+] as const;
+
+export type TripLookId = (typeof TRIP_LOOKS)[number]['id'];
+
+export function tripLook(id: string) {
+  return TRIP_LOOKS.find((look) => look.id === id) ?? TRIP_LOOKS[0];
+}
+
+export function sealIsOpen(opensAt: string) {
+  const date = parseWhen(opensAt);
+  return Boolean(date && date.getTime() <= Date.now());
+}
+
+export function sealOpensLabel(opensAt: string) {
+  return prettyWhen(opensAt) || 'el día que elijas';
+}
+
+/** Sobre de cita colocado en un punto. Se abre en opensAt. */
+export type StopSeal = Attachment & { opensAt: string };
+
 export type TripStop = {
   id: string;
   title: string;
@@ -42,6 +69,7 @@ export type TripStop = {
   todo: string[];
   /** Estimado de esta parada. Vacío: no se enseña. */
   cost: string;
+  seal: StopSeal | null;
 };
 
 export type TripDocument = {
@@ -50,6 +78,7 @@ export type TripDocument = {
   meta: Meta;
   intro: TripIntro;
   budget: TripBudget;
+  look: TripLookId;
   stops: TripStop[];
 };
 
@@ -78,6 +107,7 @@ export function createStop(): TripStop {
     note: '',
     todo: [],
     cost: '',
+    seal: null,
   };
 }
 
@@ -97,6 +127,7 @@ export function blankTrip(): TripDocument {
     },
     intro: { forName: '', fromName: '', title: '', line: '', when: '' },
     budget: blankBudget(),
+    look: 'lino',
     stops: [createStop()],
   };
 }
@@ -130,6 +161,7 @@ export function sampleTrip(): TripDocument {
       extra: '60',
       note: 'El extra es el coche. Lo demás, por parada.',
     },
+    look: 'lino',
     stops: [
       {
         id: 'stop_malaga',
@@ -145,6 +177,7 @@ export function sampleTrip(): TripDocument {
         note: '',
         todo: ['Dejar las cosas', 'Caminar hasta el puerto'],
         cost: '40',
+        seal: null,
       },
       {
         id: 'stop_nerja',
@@ -160,6 +193,7 @@ export function sampleTrip(): TripDocument {
         note: 'Si hace viento, la cala de al lado.',
         todo: ['Bajar a la cala', 'No reservar la tarde'],
         cost: '180',
+        seal: null,
       },
       {
         id: 'stop_frigiliana',
@@ -175,6 +209,7 @@ export function sampleTrip(): TripDocument {
         note: '',
         todo: ['Perderse por las calles'],
         cost: '35',
+        seal: null,
       },
       {
         id: 'stop_granada',
@@ -190,6 +225,7 @@ export function sampleTrip(): TripDocument {
         note: 'La vuelta es al día siguiente, tarde.',
         todo: ['Subir al atardecer'],
         cost: '90',
+        seal: null,
       },
     ],
   };
@@ -227,7 +263,15 @@ function normalizeStop(value: unknown): TripStop {
     note: str(raw.note),
     todo: Array.isArray(raw.todo) ? raw.todo.map((item) => str(item)).slice(0, 12) : [],
     cost: str(raw.cost),
+    seal: parseSeal(raw.seal),
   };
+}
+
+function parseSeal(value: unknown): TripStop['seal'] {
+  const link = parseAttachment(value, 'cita');
+  if (!link) return null;
+  const raw = value as { opensAt?: unknown };
+  return { ...link, opensAt: typeof raw.opensAt === 'string' ? raw.opensAt : '' };
 }
 
 function normalizeBudget(value: unknown): TripBudget {
@@ -273,6 +317,7 @@ export function parseTrip(input: unknown): TripDocument {
       when: str(intro.when),
     },
     budget: normalizeBudget(raw.budget),
+    look: tripLook(str((raw as { look?: unknown }).look)).id,
     stops: Array.isArray(raw.stops) && raw.stops.length ? raw.stops.map(normalizeStop) : [createStop()],
   };
 }

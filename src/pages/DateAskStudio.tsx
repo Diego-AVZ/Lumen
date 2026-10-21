@@ -7,7 +7,9 @@ import { PriceTag } from '@/hub/PriceTag';
 import { isCita } from '@/schema/project';
 import { loadDraft, peekDraft, purgeProject, saveDraft } from '@/lib/drafts';
 import { EmojiBar, insertEmoji } from '@/cita/EmojiBar';
-import { CITA_EYEBROWS, CITA_PHRASES, CITA_SEALS, citaTitle, parseCita, type DateAskDocument } from '@/schema/cita';
+import { AttachPicker } from '@/attach/AttachPicker';
+import { CITA_EYEBROWS, CITA_PHRASES, CITA_SEALS, citaTitle, parseCita, type CitaVale, type DateAskDocument } from '@/schema/cita';
+import { uid } from '@/lib/motion';
 import { PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
 
@@ -177,6 +179,44 @@ export function DateAskStudio({ id }: { id: string }) {
             />
             <EmojiBar onPick={(emoji) => sprinkle('envelope', envelopeRef, emoji)} />
           </label>
+          <p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Vales</p>
+          <p className="mt-2 text-[13px] leading-relaxed text-inkwell/50">
+            Uno o dos, para que elija sitio o plan. Salen en la respuesta, después del sí.
+          </p>
+          <div className="mt-3 grid gap-2">
+            {(doc.vales ?? []).map((vale, index) => (
+              <div key={vale.id} className="rounded-2xl bg-white p-3 ring-1 ring-black/10">
+                <input
+                  value={vale.title}
+                  placeholder={index === 0 ? 'La terraza' : 'El cine'}
+                  onChange={(event) => edit({ vales: doc.vales.map((item, itemIndex) => (itemIndex === index ? { ...item, title: event.target.value } : item)) })}
+                  className="w-full bg-transparent font-display text-xl italic outline-none"
+                />
+                <input
+                  value={vale.line}
+                  placeholder="Una línea"
+                  onChange={(event) => edit({ vales: doc.vales.map((item, itemIndex) => (itemIndex === index ? { ...item, line: event.target.value } : item)) })}
+                  className="mt-1 w-full bg-transparent text-[14px] outline-none"
+                />
+                <button type="button" className="mt-2 text-[12px] text-[#8a3d32]" onClick={() => edit({ vales: doc.vales.filter((item) => item.id !== vale.id) })}>
+                  Quitar
+                </button>
+              </div>
+            ))}
+            {(doc.vales ?? []).length < 2 && (
+              <button
+                type="button"
+                className="text-left text-[13px] text-brass"
+                onClick={() => edit({ vales: [...(doc.vales ?? []), { id: uid('vale'), title: '', line: '' } satisfies CitaVale] })}
+              >
+                Añadir un vale
+              </button>
+            )}
+          </div>
+          <p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Viaje dentro del sobre</p>
+          <div className="mt-2">
+            <AttachPicker kind="viaje" value={doc.trip ?? null} onChange={(trip) => edit({ trip })} />
+          </div>
           <p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Fechas posibles</p>
           <div className="mt-3">
             <DateSlots dates={doc.dates} onChange={(dates) => edit({ dates })} />

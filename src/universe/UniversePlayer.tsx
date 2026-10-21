@@ -18,6 +18,7 @@ import {
   LugaresLayer,
   NotasLayer,
   SecretoLayer,
+  SobreLayer,
 } from '@/universe/layers';
 import { introShot, skyShot, starShot } from '@/universe/shots';
 import { useCamera } from '@/universe/useCamera';
@@ -243,6 +244,7 @@ export function UniversePlayer({
         />
       )}
       {openStar?.type === 'lugares' && <LugaresLayer star={openStar} onBack={() => go('sky')} />}
+      {openStar?.type === 'sobre' && <SobreLayer star={openStar} onBack={() => go('sky')} />}
       <Grain />
     </div>
   );

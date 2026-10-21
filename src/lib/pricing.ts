@@ -137,7 +137,7 @@ function quoteTrip(doc: TripDocument): Quote {
   for (const stop of doc.stops) {
     if (stop.photo.trim()) photos += 1;
     if (stop.title.trim() || stop.lat.trim()) places += 1;
-    bits.push(stop.title, stop.body, stop.stay, stop.sleep, stop.eat, stop.arrive, stop.note, stop.cost, ...stop.todo);
+    bits.push(stop.title, stop.body, stop.stay, stop.sleep, stop.eat, stop.arrive, stop.note, stop.cost, stop.seal?.title ?? '', ...stop.todo);
   }
   return build(
     {
@@ -201,7 +201,17 @@ function build(book: PriceBook, counts: Record<string, number>, flags: Record<st
 function citaCounts(doc: DateAskDocument) {
   const dates = doc.dates.filter((item) => item.label.trim() || item.when).length;
   return {
-    chars: lengthOf(doc.forName, doc.fromName, citaEyebrowText(doc), doc.question, doc.letter, doc.envelope, ...doc.dates.map((item) => item.label)),
+    chars: lengthOf(
+      doc.forName,
+      doc.fromName,
+      citaEyebrowText(doc),
+      doc.question,
+      doc.letter,
+      doc.envelope,
+      doc.trip?.title,
+      ...doc.dates.map((item) => item.label),
+      ...doc.vales.flatMap((vale) => [vale.title, vale.line]),
+    ),
     dates,
   };
 }
@@ -252,6 +262,8 @@ function universeCounts(doc: UniverseDocument) {
     } else if (star.type === 'secreto') {
       bits.push(star.phrase, star.hint);
       star.entries.forEach((entry) => bits.push(entry.title, entry.body));
+    } else if (star.type === 'sobre') {
+      bits.push(star.line, star.cita?.title ?? '');
     }
   }
   return { photos, audios, places, chars: lengthOf(...bits) };

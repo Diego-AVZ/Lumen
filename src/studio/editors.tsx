@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { AttachPicker } from '@/attach/AttachPicker';
 import { coordsLabel, parseLatLngPair } from '@/universe/coords';
 import { putPhoto } from '@/lib/cloud';
 import { VoiceNote } from '@/studio/VoiceNote';
@@ -17,6 +18,7 @@ import {
   type LugaresStar,
   type NotasStar,
   type SecretoStar,
+  type SobreStar,
   type Star,
   type UniverseDocument,
 } from '@/schema/universe';
@@ -202,9 +204,22 @@ export function StarEditor({
       {star.type === 'archivo' && <ArchivoEditor star={star} onChange={onChange} onCommit={onCommit} />}
       {star.type === 'secreto' && <SecretoEditor star={star} onChange={onChange} onCommit={onCommit} />}
       {star.type === 'lugares' && <LugaresEditor star={star} onChange={onChange} onCommit={onCommit} />}
+      {star.type === 'sobre' && <SobreEditor star={star} onChange={onChange} />}
       <button type="button" onClick={onDelete} className="justify-self-start text-[13px] text-inkwell/45 underline-offset-4 hover:text-inkwell hover:underline">
         Quitar esta estrella
       </button>
+    </div>
+  );
+}
+
+function SobreEditor({ star, onChange }: { star: SobreStar; onChange: (star: Star) => void }) {
+  return (
+    <div className="grid gap-3">
+      <Field label="Una frase">
+        <input className={input} value={star.line} placeholder="Ábrelo cuando mires al cielo." onChange={(event) => onChange({ ...star, line: event.target.value })} />
+      </Field>
+      <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">El sobre</p>
+      <AttachPicker kind="cita" value={star.cita} onChange={(cita) => onChange({ ...star, cita })} />
     </div>
   );
 }

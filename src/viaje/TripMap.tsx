@@ -17,10 +17,10 @@ export function pinOf(stop: { lat: string; lng: string }): [number, number] | nu
   return [lat, lng];
 }
 
-function markerIcon(n: number, on: boolean) {
+function markerIcon(n: number, on: boolean, seal: boolean) {
   return divIcon({
     className: 'trip-pin-wrap',
-    html: `<span class="trip-pin${on ? ' on' : ''}">${n}</span>`,
+    html: `<span class="trip-pin${on ? ' on' : ''}${seal ? ' seal' : ''}">${seal ? '✉' : n}</span>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
   });
@@ -67,7 +67,7 @@ export function TripMap({
   onPick,
   onDrop,
 }: {
-  points: { id: string; at: [number, number] }[];
+  points: { id: string; at: [number, number]; seal?: boolean }[];
   activeIndex: number | null;
   onPick: (id: string) => void;
   onDrop?: (lat: number, lng: number) => void;
@@ -99,7 +99,7 @@ export function TripMap({
         <Marker
           key={point.id}
           position={point.at}
-          icon={markerIcon(index + 1, activeIndex === index)}
+          icon={markerIcon(index + 1, activeIndex === index, Boolean(point.seal))}
           eventHandlers={{ click: () => onPick(point.id) }}
         />
       ))}

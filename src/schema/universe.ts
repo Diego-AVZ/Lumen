@@ -1,5 +1,6 @@
 import { clamp, shade, uid } from '@/lib/motion';
 import { isPlanId, type PlanId } from '@/lib/plans';
+import { parseAttachment, type Attachment } from '@/schema/attach';
 
 /**
  * Contrato del universo.
@@ -12,7 +13,7 @@ export const SCHEMA_VERSION = 1 as const;
 export const WORLD = { width: 2400, height: 2500 };
 export const TITLE_AT = { x: 1180, y: 1080 };
 
-export type StarType = 'historia' | 'lista' | 'carta' | 'notas' | 'archivo' | 'secreto' | 'lugares';
+export type StarType = 'historia' | 'lista' | 'carta' | 'notas' | 'archivo' | 'secreto' | 'lugares' | 'sobre';
 
 export type Theme = {
   id: string;
@@ -144,8 +145,9 @@ export type NotasStar = StarBase & { type: 'notas'; cards: NoteCard[] };
 export type ArchivoStar = StarBase & { type: 'archivo'; photos: Photo[] };
 export type SecretoStar = StarBase & { type: 'secreto'; phrase: string; hint: string; entries: SecretEntry[] };
 export type LugaresStar = StarBase & { type: 'lugares'; intro: string; places: Place[] };
+export type SobreStar = StarBase & { type: 'sobre'; line: string; cita: Attachment | null };
 
-export type Star = HistoriaStar | ListaStar | CartaStar | NotasStar | ArchivoStar | SecretoStar | LugaresStar;
+export type Star = HistoriaStar | ListaStar | CartaStar | NotasStar | ArchivoStar | SecretoStar | LugaresStar | SobreStar;
 
 export type UniverseDocument = {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -165,6 +167,7 @@ export const STAR_TYPES: { type: StarType; glyph: string; name: string; line: st
   { type: 'archivo', glyph: '◎', name: 'Archivo', line: 'Polaroids. Una foto y una frase debajo.' },
   { type: 'secreto', glyph: '◈', name: 'Secreto', line: 'No se abre sin una frase que solo esa persona sabe.' },
   { type: 'lugares', glyph: '⌖', name: 'Lugares', line: 'Sitios en un mapa, con lo que pasó allí.' },
+  { type: 'sobre', glyph: '✉', name: 'Sobre', line: 'Un sobre de cita ya publicado, dentro de esta estrella.' },
 ];
 
 export const THEMES: Theme[] = [
@@ -342,6 +345,8 @@ export function createStar(type: StarType, index: number): Star {
         intro: '',
         places: [{ id: uid('place'), emoji: '⌖', title: '', body: '', lat: '', lng: '' }],
       };
+    case 'sobre':
+      return { ...base, type, line: '', cita: null };
   }
 }
 
@@ -523,6 +528,13 @@ function hydrateStar(star: Star): Star {
         title: str(entry?.title),
         body: str(entry?.body),
       })),
+    };
+  }
+  if (star.type === 'sobre') {
+    return {
+      ...star,
+      line: str(star.line),
+      cita: parseAttachment(star.cita, 'cita'),
     };
   }
   return {

@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { useAttached } from '@/attach/useAttached';
 import { haptic } from '@/lib/haptics';
 import { pingVisit } from '@/lib/stats';
-import { citaEyebrowText, formatDateOption, type CitaSeal, type DateAskDocument, type DateOption } from '@/schema/cita';
+import { isViaje } from '@/schema/project';
+import { citaEyebrowText, formatDateOption, type CitaSeal, type CitaVale, type DateAskDocument, type DateOption } from '@/schema/cita';
+
+const TripPlayer = lazy(() => import('@/viaje/TripPlayer').then((mod) => ({ default: mod.TripPlayer })));
 
 const HINTS = ['Otra vez', 'El lacre cede', 'Sigue', 'Casi', 'Uno más'];
 const SEAL_HINT: Record<CitaSeal, string> = {
@@ -14,13 +18,15 @@ const NO_LINES = ['No', '¿Seguro?', 'Mmm…', 'El otro', 'Ni se te ocurra', 'No
 
 type Spark = { id: number; dx: string; dy: string };
 
-export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; preview?: boolean }) {
+export function DateAskPlayer({ doc, preview = false, nested = false }: { doc: DateAskDocument; preview?: boolean; nested?: boolean }) {
   const [clicks, setClicks] = useState(0);
   const [sparks, setSparks] = useState<Spark[]>([]);
   const [open, setOpen] = useState(false);
   const [yes, setYes] = useState(false);
   const [picked, setPicked] = useState<DateOption | null>(null);
+  const [vale, setVale] = useState<CitaVale | null>(null);
   const [sent, setSent] = useState(false);
+  const [showTrip, setShowTrip] = useState(false);
   const [noTries, setNoTries] = useState(0);
   const [noGone, setNoGone] = useState(false);
   const [noPos, setNoPos] = useState({ x: 0, y: 0 });
@@ -32,7 +38,10 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
   const flap = Math.min(1, clicks / 6);
   const roaming = noTries > 0;
   const dates = doc.dates.filter((item) => item.label.trim() || item.when);
-  const options = dates.length ? dates : [{ id: 'cuando', label: 'Cuando quieras', when: '' }];
+  const vales = (doc.vales ?? []).filter((item) => item.title.trim()).slice(0, 2);
+  const options = dates.length ? dates : vales.length ? [] : [{ id: 'cuando', label: 'Cuando quieras', when: '' }];
+  const attached = useAttached(doc.trip ?? null);
+  const trip = attached.doc && isViaje(attached.doc) ? attached.doc : null;
 
   useEffect(() => {
     if (!opened) return;
@@ -117,17 +126,28 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
     }
   };
 
+  const finish = (option: DateOption | null, chosen: CitaVale | null) => {
+    setSent(true);
+    const label = [chosen?.title.trim(), option ? formatDateOption(option) : ''].filter(Boolean).join(' · ') || 'Dijo que sí';
+    if (!preview) void pingVisit(doc.meta.id, 'reply', { dateId: chosen?.id || option?.id || '', dateLabel: label });
+  };
+
   const sayYes = () => {
     haptic('success');
     setYes(true);
-    if (!preview) void pingVisit(doc.meta.id, 'reply', { dateId: '', dateLabel: 'Dijo que sí' });
+    if (options.length === 0 && vales.length === 0) finish(null, null);
   };
 
   const choose = (option: DateOption) => {
     setPicked(option);
     haptic('success');
-    setSent(true);
-    if (!preview) void pingVisit(doc.meta.id, 'reply', { dateId: option.id, dateLabel: formatDateOption(option) });
+    if (vales.length === 0) finish(option, null);
+  };
+
+  const chooseVale = (item: CitaVale) => {
+    setVale(item);
+    haptic('success');
+    finish(picked, item);
   };
 
   const letterY = opened ? -128 : 22 - flap * 42;
@@ -160,7 +180,7 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
   );
 
   return (
-    <div ref={stage} className="cita-room relative flex h-full min-h-dvh flex-col items-center justify-center overflow-hidden px-5 py-10 text-[#f6ead8]" onPointerMove={onMove}>
+    <div ref={stage} className={`cita-room relative flex h-full flex-col items-center justify-center overflow-hidden px-5 py-10 text-[#f6ead8] ${nested ? 'min-h-0' : 'min-h-dvh'}`} onPointerMove={onMove}>
       <p className="text-[11px] uppercase tracking-[0.22em] text-[#e8b86d]/80">
         {citaEyebrowText(doc)}
       </p>
@@ -211,6 +231,11 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
           <p className="text-[11px] uppercase tracking-[0.18em] text-[#8a6232]">La nota</p>
           {doc.letter.trim() && <p className="mt-4 font-display text-[1.35rem] italic leading-snug">{doc.letter.trim()}</p>}
           <p className="mt-5 text-[1.55rem] leading-snug">{doc.question}</p>
+          {doc.trip && (
+            <button type="button" onClick={() => setShowTrip(true)} className="mt-6 text-[14px] text-[#8a6232]">
+              Ver el viaje
+            </button>
+          )}
           <div className="mt-8 flex min-h-[3.2rem] items-center gap-3">
             <button
               type="button"
@@ -218,7 +243,7 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
               className="rounded-full bg-[#1b1612] px-6 py-2.5 text-[15px] text-[#f3eee6] transition"
               style={{ transform: `scale(${1 + Math.min(noTries, 4) * 0.08})` }}
             >
-              Sí
+              {doc.trip ? '¿Aceptar el plan?' : 'Sí'}
             </button>
             {!roaming && noButton}
           </div>
@@ -227,7 +252,7 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
 
       {roaming && noButton}
 
-      {yes && !sent && (
+      {yes && !sent && options.length > 0 && !picked && (
         <div className="animate-rise mt-8 w-full max-w-sm">
           <p className="text-center text-[13px] uppercase tracking-[0.18em] text-[#e8b86d]">Elige un día</p>
           <ul className="cita-dates mt-5 grid gap-3">
@@ -243,12 +268,45 @@ export function DateAskPlayer({ doc, preview = false }: { doc: DateAskDocument; 
         </div>
       )}
 
+      {yes && !sent && (options.length === 0 || picked) && vales.length > 0 && !vale && (
+        <div className="animate-rise mt-8 w-full max-w-sm">
+          <p className="text-center text-[13px] uppercase tracking-[0.18em] text-[#e8b86d]">Elige un vale</p>
+          <ul className="mt-5 grid gap-3">
+            {vales.map((item) => (
+              <li key={item.id}>
+                <button type="button" onClick={() => chooseVale(item)} className="cita-date w-full text-left">
+                  <span className="font-display text-2xl italic leading-tight">{item.title}</span>
+                  {item.line.trim() && <span className="mt-1 block text-[14px] text-[#2a2118]/65">{item.line.trim()}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {sent && (
         <div className="animate-rise mt-10 max-w-sm text-center">
           <p className="text-[11px] uppercase tracking-[0.2em] text-[#e8b86d]">Dicho</p>
           <p className="mt-4 font-display text-5xl italic leading-[0.95]">Entonces es un sí.</p>
-          {picked && <p className="mt-4 text-[17px] text-[#f6ead8]/70">{formatDateOption(picked)}</p>}
+          {vale && <p className="mt-4 font-display text-[1.7rem] italic text-[#f6ead8]">{vale.title}</p>}
+          {picked && <p className="mt-3 text-[17px] text-[#f6ead8]/70">{formatDateOption(picked)}</p>}
           <p className="mt-6 text-[15px] text-[#f6ead8]/50">{preview ? 'Así lo verá.' : 'Ya se lo he contado.'}</p>
+        </div>
+      )}
+      {showTrip && (
+        <div className="absolute inset-0 z-[90] flex flex-col bg-[#122018]">
+          <button type="button" onClick={() => setShowTrip(false)} className="absolute left-4 top-[calc(var(--safe-top)+0.7rem)] z-[91] rounded-full bg-black/55 px-3 py-1.5 text-[12px] text-white">
+            Volver al sobre
+          </button>
+          {trip ? (
+            <Suspense fallback={<p className="m-auto text-[13px] text-white/60">Abriendo el viaje…</p>}>
+              <TripPlayer doc={trip} framed nested />
+            </Suspense>
+          ) : (
+            <p className="m-auto max-w-[16rem] text-center text-[15px] text-white/70">
+              {attached.state === 'draft' ? 'El viaje se abre cuando esté publicado.' : 'No encuentro el viaje.'}
+            </p>
+          )}
         </div>
       )}
     </div>

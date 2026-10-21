@@ -1,4 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
+import { useAttached } from '@/attach/useAttached';
+import { DateAskPlayer } from '@/cita/DateAskPlayer';
+import { isCita } from '@/schema/project';
 import type {
   ArchivoStar,
   CartaStar,
@@ -6,6 +9,7 @@ import type {
   LugaresStar,
   NotasStar,
   SecretoStar,
+  SobreStar,
   StoryBeat,
 } from '@/schema/universe';
 import { haptic } from '@/lib/haptics';
@@ -446,6 +450,35 @@ export function SecretoLayer({
           )}
         </div>
       )}
+    </LayerShell>
+  );
+}
+
+export function SobreLayer({ star, onBack }: { star: SobreStar; onBack: () => void }) {
+  const attached = useAttached(star.cita);
+  const cita = attached.doc && isCita(attached.doc) ? attached.doc : null;
+  return (
+    <LayerShell title={star.label || 'Sobre'} onBack={onBack}>
+      <div className="flex h-full min-h-0 flex-col">
+        {star.line.trim() && <p className="px-6 pt-2 text-center font-display text-[1.15rem] italic text-paper/70">{star.line.trim()}</p>}
+        <div className="min-h-0 flex-1">
+          {cita ? (
+            <DateAskPlayer doc={cita} nested />
+          ) : (
+            <Empty
+              text={
+                !star.cita
+                  ? 'Esta estrella todavía no tiene sobre.'
+                  : attached.state === 'draft'
+                    ? 'El sobre se abre cuando esté publicado.'
+                    : attached.state === 'loading'
+                      ? 'Abriendo el sobre…'
+                      : 'No encuentro el sobre.'
+              }
+            />
+          )}
+        </div>
+      </div>
     </LayerShell>
   );
 }

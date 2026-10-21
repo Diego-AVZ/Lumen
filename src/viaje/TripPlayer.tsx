@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useAttached } from '@/attach/useAttached';
 import { haptic } from '@/lib/haptics';
-import { TRIP_SLIDE, tripHeadline, type TripDocument, type TripStop } from '@/schema/viaje';
+import { isCita } from '@/schema/project';
+import { TRIP_SLIDE, sealIsOpen, sealOpensLabel, tripHeadline, tripLook, type StopSeal, type TripDocument, type TripStop } from '@/schema/viaje';
+
+const DateAskPlayer = lazy(() => import('@/cita/DateAskPlayer').then((mod) => ({ default: mod.DateAskPlayer })));
 import { formatMoney, parseMoney, tripMoney } from '@/viaje/money';
 import { addTripNote, listTripNotes, notesAreLive, type TripNote } from '@/viaje/notes';
 import { TripMap, pinOf } from '@/viaje/TripMap';
@@ -9,6 +13,7 @@ export function TripPlayer({
   doc,
   framed = false,
   preview = false,
+  nested = false,
   stopId,
   onStop,
   onDrop,
@@ -16,16 +21,20 @@ export function TripPlayer({
   doc: TripDocument;
   framed?: boolean;
   preview?: boolean;
+  nested?: boolean;
   stopId?: string | null;
   onStop?: (id: string | null) => void;
   onDrop?: (lat: number, lng: number) => void;
 }) {
   const [own, setOwn] = useState<string | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [sealOpen, setSealOpen] = useState(false);
   const openId = onStop ? (stopId ?? null) : own;
   const money = tripMoney(doc);
+  const look = tripLook(doc.look);
   const go = (id: string | null) => {
     setPhoto(null);
+    setSealOpen(false);
     haptic(id && id !== TRIP_SLIDE ? 'light' : 'medium');
     if (onStop) onStop(id);
     else setOwn(id);
@@ -35,7 +44,7 @@ export function TripPlayer({
     () =>
       doc.stops.flatMap((stop) => {
         const at = pinOf(stop);
-        return at ? [{ id: stop.id, at }] : [];
+        return at ? [{ id: stop.id, at, seal: Boolean(stop.seal) }] : [];
       }),
     [doc.stops],
   );
@@ -46,13 +55,15 @@ export function TripPlayer({
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden bg-[#122018] text-[#f6efe6]"
+      className="relative h-full w-full overflow-hidden"
       style={{
+        background: look.map,
+        color: '#f6efe6',
         ['--frame-safe-top' as string]: framed ? '36px' : undefined,
-        ['--frame-safe-bottom' as string]: framed ? '14px' : undefined,
+        ['--frame-safe-bottom' as string]: framed ? '22px' : undefined,
       }}
     >
-      <div className={`absolute inset-x-0 top-0 ${slide ? 'h-[14%]' : 'h-[46%]'}`}>
+      <div className={`absolute inset-x-0 top-0 ${slide || nested ? 'h-[22%]' : 'h-[34%]'}`}>
         <TripMap
           points={pins}
           activeIndex={activePin != null && activePin >= 0 ? activePin : null}
@@ -64,16 +75,17 @@ export function TripPlayer({
           {slide ? 'Cuentas' : stop ? `Parada ${index + 1} de ${doc.stops.length}` : 'Todo el recorrido'}
         </p>
         {onDrop && !slide && (
-          <p className="pointer-events-none absolute bottom-3 left-4 right-4 text-[11px] text-white/80">
+          <p className="pointer-events-none absolute bottom-8 left-4 right-14 text-[11px] text-white/80">
             Toca el mapa para dejar la parada.
           </p>
         )}
       </div>
 
       <section
-        className={`absolute inset-x-0 bottom-0 flex flex-col bg-[#f6efe6] text-[#1b1612] shadow-[0_-18px_40px_rgba(0,0,0,0.28)] ${
-          slide ? 'top-[10%] rounded-t-[22px]' : 'top-[42%] rounded-t-[28px]'
+        className={`absolute inset-x-0 bottom-0 flex flex-col shadow-[0_-12px_28px_rgba(0,0,0,0.22)] ${
+          slide || nested ? 'top-[18%] rounded-t-[22px]' : 'top-[31%] rounded-t-[26px]'
         }`}
+        style={{ background: look.sheet, color: look.ink }}
       >
         <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-black/15" />
         <div className="scroll-y min-h-0 flex-1 px-5 pb-4 pt-4">
@@ -85,13 +97,15 @@ export function TripPlayer({
               index={index}
               total={doc.stops.length}
               currency={doc.budget.currency}
+              accent={look.accent}
               onOpenPhoto={setPhoto}
+              onOpenSeal={() => setSealOpen(true)}
             />
           ) : (
             <Overview doc={doc} onOpen={go} />
           )}
         </div>
-        <footer className="flex shrink-0 items-center gap-2 border-t border-black/10 px-4 py-3 pb-[calc(var(--safe-bottom)+0.75rem)]">
+        <footer className="flex shrink-0 items-center gap-2 border-t border-black/10 px-4 pb-[calc(var(--safe-bottom)+1.15rem)] pt-3">
           {slide ? (
             <>
               <button
@@ -101,7 +115,7 @@ export function TripPlayer({
               >
                 Anterior
               </button>
-              <button type="button" onClick={() => go(null)} className="flex-1 rounded-full bg-[#1b1612] px-3 py-2 text-[13px] text-[#f6efe6]">
+              <button type="button" onClick={() => go(null)} className="flex-1 rounded-full px-3 py-2.5 text-[13px]" style={{ background: look.ink, color: look.sheet }}>
                 Recorrido
               </button>
             </>
@@ -115,7 +129,7 @@ export function TripPlayer({
               >
                 Anterior
               </button>
-              <button type="button" onClick={() => go(null)} className="flex-1 rounded-full bg-[#1b1612] px-3 py-2 text-[13px] text-[#f6efe6]">
+              <button type="button" onClick={() => go(null)} className="flex-1 rounded-full px-3 py-2.5 text-[13px]" style={{ background: look.ink, color: look.sheet }}>
                 Recorrido
               </button>
               <button
@@ -135,7 +149,8 @@ export function TripPlayer({
                 type="button"
                 disabled={!doc.stops.length}
                 onClick={() => go(doc.stops[0]?.id ?? null)}
-                className="flex-1 rounded-full bg-[#1b1612] px-4 py-3 text-[14px] text-[#f6efe6] disabled:opacity-30"
+                className="flex-1 rounded-full px-4 py-3 text-[14px] disabled:opacity-30"
+                style={{ background: look.ink, color: look.sheet }}
               >
                 Ver la primera parada
               </button>
@@ -150,6 +165,16 @@ export function TripPlayer({
           )}
         </footer>
       </section>
+      {sealOpen && stop?.seal && (
+        <div className="absolute inset-0 z-[75] flex flex-col" style={{ background: look.sheet, color: look.ink }}>
+          <button type="button" onClick={() => setSealOpen(false)} className="absolute left-4 top-[calc(var(--safe-top)+0.7rem)] z-[76] rounded-full px-3 py-1.5 text-[12px] ring-1 ring-current/20">
+            Volver a la parada
+          </button>
+          <div className="min-h-0 flex-1 pt-10">
+            <SealAsk seal={stop.seal} />
+          </div>
+        </div>
+      )}
       {photo && (
         <button
           type="button"
@@ -200,13 +225,17 @@ function StopView({
   index,
   total,
   currency,
+  accent,
   onOpenPhoto,
+  onOpenSeal,
 }: {
   stop: TripStop;
   index: number;
   total: number;
   currency: TripDocument['budget']['currency'];
+  accent: string;
   onOpenPhoto: (src: string) => void;
+  onOpenSeal: () => void;
 }) {
   const todos = stop.todo.map((item) => item.trim()).filter(Boolean);
   const amount = stop.cost.trim();
@@ -222,9 +251,10 @@ function StopView({
 
   return (
     <article>
-      <p className="text-[11px] uppercase tracking-[0.18em] text-[#8a6232]">
+      <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: accent }}>
         {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
       </p>
+      {stop.seal && <SealNote seal={stop.seal} accent={accent} onOpen={onOpenSeal} />}
       {stop.photo.trim() ? (
         <button
           type="button"
@@ -409,6 +439,41 @@ function whenOf(iso: string) {
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `Hace ${hours} h`;
   return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(new Date(then));
+}
+
+function SealNote({ seal, accent, onOpen }: { seal: StopSeal; accent: string; onOpen: () => void }) {
+  const open = sealIsOpen(seal.opensAt);
+  return (
+    <div className="mt-3 rounded-[16px] px-3 py-3 ring-1 ring-black/10">
+      <p className="text-[11px] uppercase tracking-[0.16em]" style={{ color: accent }}>
+        {open ? 'El sobre ya se puede abrir' : `Se abre ${sealOpensLabel(seal.opensAt)}`}
+      </p>
+      <p className="mt-1 font-display text-[1.25rem] italic leading-tight">{seal.title || 'Una cita'}</p>
+      <button type="button" disabled={!open} onClick={onOpen} className="mt-2 text-[13px] disabled:opacity-40" style={{ color: accent }}>
+        {open ? 'Abrir el sobre' : 'Todavía cerrado'}
+      </button>
+    </div>
+  );
+}
+
+function SealAsk({ seal }: { seal: StopSeal }) {
+  const attached = useAttached(seal);
+  const cita = attached.doc && isCita(attached.doc) ? attached.doc : null;
+  if (!sealIsOpen(seal.opensAt)) {
+    return <p className="grid h-full place-items-center px-8 text-center font-display text-3xl italic">Se abre {sealOpensLabel(seal.opensAt)}.</p>;
+  }
+  if (!cita) {
+    return (
+      <p className="grid h-full place-items-center px-8 text-center text-[15px] opacity-70">
+        {attached.state === 'draft' ? 'El sobre se abre cuando esté publicado.' : attached.state === 'loading' ? 'Abriendo…' : 'No encuentro el sobre.'}
+      </p>
+    );
+  }
+  return (
+    <Suspense fallback={<p className="grid h-full place-items-center text-[13px] opacity-60">Abriendo el sobre…</p>}>
+      <DateAskPlayer doc={cita} nested />
+    </Suspense>
+  );
 }
 
 function formatStopCost(raw: string, currency: TripDocument['budget']['currency']) {

@@ -1,5 +1,6 @@
 import { uid } from '@/lib/motion';
 import { isPlanId } from '@/lib/plans';
+import { parseAttachment, type Attachment } from '@/schema/attach';
 import type { Meta } from '@/schema/universe';
 
 export const CITA_PHRASES = [
@@ -43,6 +44,13 @@ export type DateOption = {
   when: string;
 };
 
+/** Un plan o un sitio para elegir, cuando el sí ya está claro. */
+export type CitaVale = {
+  id: string;
+  title: string;
+  line: string;
+};
+
 export type DateAskDocument = {
   schemaVersion: 1;
   kind: 'cita';
@@ -55,6 +63,9 @@ export type DateAskDocument = {
   eyebrow: string;
   envelope: string;
   dates: DateOption[];
+  vales: CitaVale[];
+  /** Viaje publicado que se abre desde el sobre. */
+  trip: Attachment | null;
 };
 
 function nowIso() {
@@ -82,6 +93,8 @@ export function blankCita(): DateAskDocument {
     seal: 'heart',
     eyebrow: 'Una cita',
     envelope: '',
+    vales: [],
+    trip: null,
     dates: nearbySlots()
       .slice(0, 2)
       .map((slot) => ({ id: uid('when'), label: slot.label, when: slot.when })),
@@ -129,6 +142,14 @@ export function parseCita(input: unknown): DateAskDocument {
     })(),
     eyebrow: citaEyebrowText({ eyebrow: str(raw.eyebrow), fromName: str(raw.fromName) }),
     envelope: str(raw.envelope).slice(0, 42),
+    vales: Array.isArray(raw.vales)
+      ? raw.vales.slice(0, 2).map((item) => ({
+          id: str(item?.id) || uid('vale'),
+          title: str(item?.title).slice(0, 48),
+          line: str(item?.line).slice(0, 90),
+        }))
+      : [],
+    trip: parseAttachment(raw.trip, 'viaje'),
     dates: dates.map((item) => ({
       id: str(item?.id) || uid('when'),
       label: str(item?.label),
