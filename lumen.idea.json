@@ -76,9 +76,14 @@
       "precio": "Base 12,95 €. Entran 5 fotos, 1 audio, 10 lugares y 2500 caracteres. Música, secreto y contraseña son extras."
     },
     "web": {
-      "queEs": "Una página personal, no un cielo. Se recorre por sitios.",
-      "queLleva": "Textos, fotos, audios y Spotify. Un sitio puede pedir una pregunta antes de abrirse. Un corazón se toca, como en la cita, y detrás hay un detalle o una foto. La lista no tiene tema de universo: cada cierto tiempo se elige entre dos planes y la elección se guarda en el teléfono. Hay mapa.",
+      "queEs": "Una página personal, no un cielo. Se recorre por sitios, o de un tirón.",
+      "queLleva": "Textos, fotos, audios y Spotify. Un sitio puede pedir una pregunta antes de abrirse. Un corazón se toca, como en la cita, y detrás hay un detalle o una foto. La lista no tiene tema de universo: cada cierto tiempo se elige entre dos planes y la elección se guarda en el teléfono. Hay mapa. Quien la crea elige si se lee por sitios o todo seguido.",
       "precio": "Misma familia que la plantilla básica: base 12,95 €. Entran 5 fotos, 1 audio, 10 lugares y 2500 caracteres. Música, prueba y detalle son extras. Se cobra al publicar, la diferencia si ya había saldo de plantilla."
+    },
+    "viaje": {
+      "queEs": "Un recorrido en satélite. Primero se ve entero. Luego, parada a parada.",
+      "queLleva": "En cada parada, lo que se rellene: título, descripción, foto, tiempo aquí, dónde se duerme, dónde se come, cómo se llega, una nota y cosas que hacer. Lo vacío no aparece.",
+      "precio": "Misma familia que la plantilla básica: base 12,95 €. Las paradas cuentan como lugares y las fotos como fotos. Se cobra al publicar, la diferencia si ya había saldo de plantilla."
     },
     "cita": {
       "queEs": "Un sobre cerrado para pedir una cita.",
@@ -104,7 +109,7 @@
     "ideas": "Frases por si alguien se queda en blanco.",
     "instrucciones": "Cómo se construye, en cuatro pasos: crear, ver, ajustar, publicar."
   },
-  "logicaDeDinero": "Crear y diseñar la invitación no cobran. El precio se calcula en el cliente según lo que lleva el regalo. Al publicar se mira cuánto se ha pagado ya hacia ese proyecto. Se cobra la diferencia. Un saldo viejo de la misma familia (cita o plantilla) se aplica solo hasta cubrir el presupuesto. La web personalizada es de la familia plantilla, así que el saldo de plantilla basic o pro le sirve. Lista de deseos se cobra aparte, no con el saldo de un universo.",
+  "logicaDeDinero": "Crear y diseñar la invitación no cobran. El precio se calcula en el cliente según lo que lleva el regalo. Al publicar se mira cuánto se ha pagado ya hacia ese proyecto. Se cobra la diferencia. Un saldo viejo de la misma familia (cita o plantilla) se aplica solo hasta cubrir el presupuesto. La web personalizada y el viaje son de la familia plantilla, así que el saldo de plantilla basic o pro les sirve. Lista de deseos se cobra aparte, no con el saldo de un universo.",
   "loQueNoEs": [
     "No es una red social.",
     "No lee el teléfono de la otra persona. Solo la visita al regalo.",

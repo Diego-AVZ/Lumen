@@ -1,6 +1,7 @@
 import { CITA_PHRASES, citaEyebrowText, type DateAskDocument } from '@/schema/cita';
 import type { DeseosDocument } from '@/schema/deseos';
-import { isCita, isDeseos, isWeb, type ProjectDocument } from '@/schema/project';
+import { isCita, isDeseos, isViaje, isWeb, type ProjectDocument } from '@/schema/project';
+import type { TripDocument } from '@/schema/viaje';
 import type { WebDocument } from '@/schema/web';
 import type { UniverseDocument } from '@/schema/universe';
 import type { PlanFamily } from '@/lib/plans';
@@ -104,6 +105,7 @@ export function priceOf(doc: ProjectDocument): Quote {
   if (isCita(doc)) return quoteCita(doc);
   if (isDeseos(doc)) return quoteDeseos(doc);
   if (isWeb(doc)) return quoteWeb(doc);
+  if (isViaje(doc)) return quoteTrip(doc);
   return quoteUniverse(doc);
 }
 
@@ -115,6 +117,28 @@ function quoteCita(doc: DateAskDocument): Quote {
 
 function quoteDeseos(_doc: DeseosDocument): Quote {
   return build(PRICE.deseos, {}, { mantenimiento: true });
+}
+
+function quoteTrip(doc: TripDocument): Quote {
+  let photos = 0;
+  let places = 0;
+  const bits = [doc.meta.title, doc.intro.forName, doc.intro.fromName, doc.intro.title, doc.intro.line, doc.intro.when];
+  for (const stop of doc.stops) {
+    if (stop.photo.trim()) photos += 1;
+    if (stop.title.trim() || stop.lat.trim()) places += 1;
+    bits.push(stop.title, stop.body, stop.stay, stop.sleep, stop.eat, stop.arrive, stop.note, ...stop.todo);
+  }
+  return build(
+    {
+      id: 'plantilla',
+      name: 'Viaje',
+      baseCents: PRICE.plantilla.baseCents,
+      meters: PRICE.plantilla.meters,
+      features: [],
+    },
+    { photos, places, chars: lengthOf(...bits) },
+    {},
+  );
 }
 
 function quoteWeb(doc: WebDocument): Quote {

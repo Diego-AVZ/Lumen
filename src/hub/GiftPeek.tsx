@@ -23,6 +23,7 @@ export function GiftPeek({ id }: { id: TemplateId }) {
             {id === 'album' && <AlbumMini />}
             {id === 'mapa' && <MapaMini />}
             {id === 'web' && <WebMini />}
+            {id === 'viaje' && <ViajeMini />}
           </div>
         </div>
       </div>
@@ -123,6 +124,24 @@ function WebMini() {
       <span className="mt-3 grid h-7 w-7 place-items-center rounded-full bg-[#b4233a] text-[11px] text-white">♥</span>
       <span className="mt-3 block h-px w-10 bg-black/15" />
       <span className="mt-2 block h-px w-14 bg-black/10" />
+    </div>
+  );
+}
+
+function ViajeMini() {
+  return (
+    <div className="relative h-full overflow-hidden bg-[#123028]">
+      <div className="absolute inset-x-0 top-0 h-[46%] bg-[radial-gradient(circle_at_30%_40%,#2a5a48,transparent_55%),linear-gradient(160deg,#1a4034,#0c1c16)]" />
+      <svg className="absolute left-[12%] top-[8%] h-[34%] w-[76%]" viewBox="0 0 120 70" aria-hidden>
+        <path d="M14 48 C 34 46, 48 22, 70 28 S 100 18, 108 12" fill="none" stroke="#f6efe6" strokeWidth="2" />
+        <circle cx="14" cy="48" r="4" fill="#e8b86d" />
+        <circle cx="70" cy="28" r="4" fill="#f6efe6" />
+        <circle cx="108" cy="12" r="4" fill="#f6efe6" />
+      </svg>
+      <div className="absolute inset-x-0 bottom-0 top-[42%] rounded-t-[14px] bg-[#f6efe6] px-3 pt-3 text-[#1b1612]">
+        <p className="text-[6px] uppercase tracking-[0.16em] text-[#8a6232]">La costa</p>
+        <p className="mt-1 font-display text-[0.95rem] italic leading-none">El viaje</p>
+      </div>
     </div>
   );
 }

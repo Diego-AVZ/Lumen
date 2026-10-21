@@ -976,6 +976,30 @@ button {
   animation: cita-shake 0.35s ease;
 }
 
+.trip-pin-wrap {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.trip-pin {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #1b1612;
+  color: #f6efe6;
+  font-family: Fraunces, Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  box-shadow: 0 0 0 2px #f6efe6, 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+
+.trip-pin.on {
+  background: #e8b86d;
+  color: #1b1612;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sky-star, .animate-rise, .animate-depth,
   .gift-peek-bob, .gift-mini-star, .gift-mini-fall,

@@ -175,6 +175,30 @@ export function WebStudio({ id }: { id: string }) {
               <input className={input} value={doc.soundtrack.label} placeholder="Escuchar" onChange={(event) => edit((current) => ({ ...current, soundtrack: { ...current.soundtrack, label: event.target.value } }))} />
             </Field>
             <div>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/45">Cómo se lee</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => edit((current) => ({ ...current, reading: 'sitios' }))}
+                  className={`rounded-full px-3 py-2 text-[13px] ${doc.reading !== 'scroll' ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+                >
+                  Por sitios
+                </button>
+                <button
+                  type="button"
+                  onClick={() => edit((current) => ({ ...current, reading: 'scroll' }))}
+                  className={`rounded-full px-3 py-2 text-[13px] ${doc.reading === 'scroll' ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+                >
+                  De un tirón
+                </button>
+              </div>
+              <p className="mt-2 text-[12.5px] leading-relaxed text-inkwell/45">
+                {doc.reading === 'scroll'
+                  ? 'Todo seguido, de arriba abajo. Los sitios siguen ahí, como capítulos.'
+                  : 'Cada sitio se abre aparte, desde la portada.'}
+              </p>
+            </div>
+            <div>
               <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/45">Papel</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {WEB_THEMES.map((theme) => (

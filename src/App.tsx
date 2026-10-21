@@ -12,6 +12,7 @@ const Studio = lazy(() => import('@/pages/Studio').then((m) => ({ default: m.Stu
 const DateAskStudio = lazy(() => import('@/pages/DateAskStudio').then((m) => ({ default: m.DateAskStudio })));
 const DeseosStudio = lazy(() => import('@/pages/DeseosStudio').then((m) => ({ default: m.DeseosStudio })));
 const WebStudio = lazy(() => import('@/pages/WebStudio').then((m) => ({ default: m.WebStudio })));
+const TripStudio = lazy(() => import('@/pages/TripStudio').then((m) => ({ default: m.TripStudio })));
 const Missing = lazy(() => import('@/pages/Missing').then((m) => ({ default: m.Missing })));
 
 function ProjectStudio() {
@@ -19,6 +20,7 @@ function ProjectStudio() {
   if (id.startsWith('cita_')) return <DateAskStudio id={id} />;
   if (id.startsWith('deseos_')) return <DeseosStudio id={id} />;
   if (id.startsWith('web_')) return <WebStudio id={id} />;
+  if (id.startsWith('viaje_')) return <TripStudio id={id} />;
   return <Studio />;
 }
 

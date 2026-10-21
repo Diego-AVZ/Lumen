@@ -10,7 +10,7 @@ import { PayModal } from '@/hub/PayModal';
 import { InviteSheet } from '@/studio/InviteSheet';
 import { citaEyebrowText } from '@/schema/cita';
 import { extendMaintenance } from '@/schema/deseos';
-import { isCita, isDeseos, isWeb, type ProjectDocument } from '@/schema/project';
+import { isCita, isDeseos, isViaje, isWeb, type ProjectDocument } from '@/schema/project';
 
 type Health = { urls: string[] };
 
@@ -103,7 +103,7 @@ export function PublishDialog({
   const publicLink = liveLink || `${phone}/u/${previewSlug}`;
   const forName = forNameOf(doc).trim();
   const fromName = fromNameOf(doc).trim();
-  const dedication = isCita(doc) || isDeseos(doc) ? '' : isWeb(doc) ? doc.intro.line.trim() : doc.intro.dedication.trim();
+  const dedication = isCita(doc) || isDeseos(doc) ? '' : isWeb(doc) || isViaje(doc) ? doc.intro.line.trim() : doc.intro.dedication.trim();
 
   const copy = async (value: string) => {
     await copyText(value);
@@ -191,7 +191,7 @@ export function PublishDialog({
           <span className="text-[11px] uppercase tracking-[0.16em] text-brass">Sin pagar</span>
           <span className="mt-1 block font-display text-3xl italic">Diseñar la invitación</span>
           <span className="mt-1 block text-[14px] leading-relaxed text-inkwell/55">
-            JPG para el móvil y PDF para enviarlo. El botón abre {isCita(doc) ? 'el sobre' : isDeseos(doc) ? 'la lista' : isWeb(doc) ? 'la web' : 'el universo'}.
+            JPG para el móvil y PDF para enviarlo. El botón abre {isCita(doc) ? 'el sobre' : isDeseos(doc) ? 'la lista' : isViaje(doc) ? 'el viaje' : isWeb(doc) ? 'la web' : 'el universo'}.
           </span>
         </button>
 
@@ -267,8 +267,8 @@ export function PublishDialog({
           url={publicLink}
           title={forName ? (isDeseos(doc) ? forName : `Para ${forName}`) : 'Para ti'}
           from={fromName}
-          eyebrow={isCita(doc) ? citaEyebrowText(doc) : isDeseos(doc) ? 'Una lista' : isWeb(doc) ? 'Una web' : 'Un regalo'}
-          line={dedication || (isCita(doc) ? 'Tengo una pregunta para ti.' : isDeseos(doc) ? 'Entra con tu correo y escribe planes.' : isWeb(doc) ? 'Hay una web que quiero que abras.' : 'Hay un cielo que quiero que abras.')}
+          eyebrow={isCita(doc) ? citaEyebrowText(doc) : isDeseos(doc) ? 'Una lista' : isViaje(doc) ? 'Un viaje' : isWeb(doc) ? 'Una web' : 'Un regalo'}
+          line={dedication || (isCita(doc) ? 'Tengo una pregunta para ti.' : isDeseos(doc) ? 'Entra con tu correo y escribe planes.' : isViaje(doc) ? 'Hay un recorrido que quiero que veas.' : isWeb(doc) ? 'Hay una web que quiero que abras.' : 'Hay un cielo que quiero que abras.')}
           ready={Boolean(liveLink)}
           onClose={() => setInvite(false)}
         />

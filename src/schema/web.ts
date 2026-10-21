@@ -118,6 +118,8 @@ export type WebPage = {
   blocks: WebBlock[];
 };
 
+export type WebReading = 'sitios' | 'scroll';
+
 export type WebDocument = {
   schemaVersion: typeof WEB_SCHEMA_VERSION;
   kind: 'web';
@@ -125,6 +127,8 @@ export type WebDocument = {
   theme: WebTheme;
   intro: WebIntro;
   soundtrack: Soundtrack;
+  /** sitios: cada página se abre aparte. scroll: todo seguido, de arriba abajo. */
+  reading: WebReading;
   pages: WebPage[];
 };
 
@@ -227,6 +231,7 @@ export function blankWeb(): WebDocument {
     theme: { ...WEB_THEMES[0] },
     intro: { forName: '', fromName: '', line: '' },
     soundtrack: { url: '', label: '' },
+    reading: 'sitios',
     pages: [createPage('Inicio')],
   };
 }
@@ -253,6 +258,7 @@ export function sampleWeb(): WebDocument {
       line: 'No es un cielo. Es un sitio vuestro.',
     },
     soundtrack: { url: '', label: '' },
+    reading: 'sitios',
     pages: [
       {
         id: 'page_inicio',
@@ -508,6 +514,7 @@ export function parseWeb(input: unknown): WebDocument {
       line: str(intro.line),
     },
     soundtrack: { url: str(sound.url), label: str(sound.label) },
+    reading: raw.reading === 'scroll' ? 'scroll' : 'sitios',
     pages: Array.isArray(raw.pages) ? raw.pages.map(normalizePage) : [],
   };
 }

@@ -29,9 +29,17 @@ export const TEMPLATES = [
     id: 'web',
     name: 'Web personalizada',
     tag: 'Lista ahora',
-    line: 'Una página vuestra. Textos, fotos, música, un mapa y sitios que se abren si sabes la respuesta.',
+    line: 'Una página vuestra. Por sitios o de un tirón: textos, fotos, música y un mapa.',
     available: true,
     sky: 'linear-gradient(165deg, #4a3424 0%, #1c1612 48%, #0e0c0a 100%)',
+  },
+  {
+    id: 'viaje',
+    name: 'El viaje',
+    tag: 'Lista ahora',
+    line: 'El recorrido entero en satélite. Luego, parada a parada: dónde dormís, dónde coméis, qué hacéis.',
+    available: true,
+    sky: 'linear-gradient(165deg, #1c3a32 0%, #102018 48%, #070c0a 100%)',
   },
   {
     id: 'deseos',

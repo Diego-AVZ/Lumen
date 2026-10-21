@@ -28,7 +28,7 @@ type Stored = {
 
 function isProject(doc: Stored | null): doc is Stored {
   if (!doc) return false;
-  if (doc.kind === 'cita' || doc.kind === 'deseos' || doc.kind === 'web') return Boolean(doc.meta?.id);
+  if (doc.kind === 'cita' || doc.kind === 'deseos' || doc.kind === 'web' || doc.kind === 'viaje') return Boolean(doc.meta?.id);
   return Array.isArray(doc.stars);
 }
 
@@ -115,7 +115,9 @@ function summary(doc: Stored, fallbackId: string) {
       ? (Array.isArray((doc as { dates?: unknown[] }).dates) ? (doc as { dates: unknown[] }).dates.length : 0)
       : doc.kind === 'web'
         ? (Array.isArray((doc as { pages?: unknown[] }).pages) ? (doc as { pages: unknown[] }).pages.length : 0)
-        : Array.isArray(doc.stars) ? doc.stars.length : 0,
+        : doc.kind === 'viaje'
+          ? (Array.isArray((doc as { stops?: unknown[] }).stops) ? (doc as { stops: unknown[] }).stops.length : 0)
+          : Array.isArray(doc.stars) ? doc.stars.length : 0,
   };
 }
 

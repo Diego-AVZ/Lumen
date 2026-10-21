@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { haptic } from '@/lib/haptics';
 import { spotifyEmbed } from '@/lib/spotify';
 import {
@@ -78,6 +78,10 @@ export function WebPlayer({
   const paper = doc.theme.paper;
   const gold = doc.theme.gold;
 
+  if (doc.reading === 'scroll') {
+    return <ScrollWeb doc={doc} preview={preview} framed={framed} pageId={pageId} onPage={onPage} ink={ink} paper={paper} gold={gold} />;
+  }
+
   return (
     <div
       className="web-site relative flex h-full w-full flex-col overflow-hidden"
@@ -107,6 +111,106 @@ export function WebPlayer({
         ) : (
           <Cover doc={doc} ink={ink} gold={gold} onOpen={go} />
         )}
+      </div>
+    </div>
+  );
+}
+
+function ScrollWeb({
+  doc,
+  preview,
+  framed,
+  pageId,
+  onPage,
+  ink,
+  paper,
+  gold,
+}: {
+  doc: WebDocument;
+  preview: boolean;
+  framed: boolean;
+  pageId?: string | null;
+  onPage?: (id: string | null) => void;
+  ink: string;
+  paper: string;
+  gold: string;
+}) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const jump = (id: string | null) => {
+    onPage?.(id);
+    const host = scroller.current;
+    if (!host) return;
+    if (!id) {
+      host.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const node = host.querySelector<HTMLElement>(`[data-page="${id}"]`);
+    if (!node) return;
+    const top = node.getBoundingClientRect().top - host.getBoundingClientRect().top + host.scrollTop - 8;
+    host.scrollTo({ top, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (!pageId) return;
+    const host = scroller.current;
+    const node = host?.querySelector<HTMLElement>(`[data-page="${pageId}"]`);
+    if (!host || !node) return;
+    const top = node.getBoundingClientRect().top - host.getBoundingClientRect().top + host.scrollTop - 8;
+    host.scrollTo({ top, behavior: 'smooth' });
+  }, [pageId]);
+
+  return (
+    <div
+      className="web-site relative flex h-full w-full flex-col overflow-hidden"
+      style={{
+        background: paper,
+        color: ink,
+        ['--frame-safe-top' as string]: framed ? '36px' : undefined,
+        ['--frame-safe-bottom' as string]: framed ? '16px' : undefined,
+      }}
+    >
+      <header className="shrink-0 px-5 pb-2 pt-[calc(var(--safe-top)+0.85rem)]">
+        <p className="text-[11px] uppercase tracking-[0.22em]" style={{ color: gold }}>
+          {doc.intro.fromName.trim() ? `De ${doc.intro.fromName.trim()}` : 'Una web'}
+        </p>
+        {doc.pages.length > 1 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <button type="button" onClick={() => jump(null)} className="shrink-0 rounded-full px-3 py-1.5 text-[13px]" style={{ boxShadow: `inset 0 0 0 1px ${ink}22` }}>
+              Arriba
+            </button>
+            {doc.pages.map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                onClick={() => jump(page.id)}
+                className="shrink-0 rounded-full px-3 py-1.5 text-[13px]"
+                style={{
+                  background: pageId === page.id ? ink : 'transparent',
+                  color: pageId === page.id ? paper : ink,
+                  boxShadow: pageId === page.id ? undefined : `inset 0 0 0 1px ${ink}22`,
+                }}
+              >
+                {page.nav || page.title || 'Sitio'}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
+      <div ref={scroller} className="scroll-y min-h-0 flex-1 px-5 pb-[calc(var(--safe-bottom)+1.5rem)]">
+        <h1 className="max-w-[12ch] pt-2 font-display text-[2.5rem] italic leading-[0.95]">
+          {doc.intro.forName.trim() ? `Para ${doc.intro.forName.trim()}` : 'Para ti'}
+        </h1>
+        {doc.intro.line.trim() && <p className="mt-3 max-w-[32ch] text-[16px] leading-relaxed opacity-75">{doc.intro.line.trim()}</p>}
+        {doc.soundtrack.url.trim() && (
+          <div className="mt-4">
+            <Listen url={doc.soundtrack.url} label={doc.soundtrack.label || 'Escuchar'} gold={gold} />
+          </div>
+        )}
+        {doc.pages.map((page) => (
+          <section key={page.id} data-page={page.id} className="mt-10 border-t pt-8" style={{ borderColor: `${ink}18` }}>
+            <Site page={page} doc={doc} preview={preview} ink={ink} paper={paper} gold={gold} onOpen={jump} flow />
+          </section>
+        ))}
       </div>
     </div>
   );
@@ -170,6 +274,7 @@ function Site({
   paper,
   gold,
   onOpen,
+  flow = false,
 }: {
   page: WebPage;
   doc: WebDocument;
@@ -178,6 +283,7 @@ function Site({
   paper: string;
   gold: string;
   onOpen: (id: string) => void;
+  flow?: boolean;
 }) {
   const key = `lumen.web.${preview ? 'preview' : 'live'}.v1.quiz.${doc.meta.id}`;
   const [passed, setPassed] = useState(() => Boolean(readBag(key)[page.id]));
@@ -207,8 +313,8 @@ function Site({
   };
 
   return (
-    <div className="pb-6 pt-1">
-      {doc.pages.length > 1 && (
+    <div className={flow ? 'pb-2 pt-0' : 'pb-6 pt-1'}>
+      {!flow && doc.pages.length > 1 && (
         <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
           {doc.pages.map((item) => {
             const on = item.id === page.id;

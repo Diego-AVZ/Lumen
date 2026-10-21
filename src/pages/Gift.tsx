@@ -8,8 +8,9 @@ import { GiftLinks } from '@/pages/GiftLinks';
 import { pingVisit } from '@/lib/stats';
 import { rememberedPhrase, rememberPhrase } from '@/lib/unlock';
 import { DeseosBoard } from '@/deseos/DeseosBoard';
-import { isCita, isDeseos, isWeb, parseProject, type ProjectDocument } from '@/schema/project';
+import { isCita, isDeseos, isViaje, isWeb, parseProject, type ProjectDocument } from '@/schema/project';
 import { UniversePlayer } from '@/universe/UniversePlayer';
+import { TripPlayer } from '@/viaje/TripPlayer';
 import { WebPlayer } from '@/web/WebPlayer';
 
 function embeddedDocument(kind: 'published' | 'draft', slug?: string, id?: string) {
@@ -112,7 +113,7 @@ export function Gift({ kind }: { kind: 'published' | 'draft' }) {
   }, [visitId]);
 
   useEffect(() => {
-    const color = !doc || isCita(doc) ? '#140e0c' : isDeseos(doc) ? '#f6efe6' : isWeb(doc) ? doc.theme.paper : doc.theme.ink;
+    const color = !doc || isCita(doc) ? '#140e0c' : isDeseos(doc) ? '#f6efe6' : isViaje(doc) ? '#122018' : isWeb(doc) ? doc.theme.paper : doc.theme.ink;
     document.body.style.background = color;
     const name = !doc ? '' : isCita(doc) ? doc.forName : isDeseos(doc) ? doc.listName : doc.intro.forName;
     document.title = name ? `Para ${name}` : 'Lumen';
@@ -211,7 +212,15 @@ export function Gift({ kind }: { kind: 'published' | 'draft' }) {
 
   return (
     <div className="relative h-dvh w-full">
-      {isCita(doc) ? <DateAskPlayer key={doc.meta.id} doc={doc} /> : isWeb(doc) ? <WebPlayer key={doc.meta.id} doc={doc} /> : <UniversePlayer key={doc.meta.id} doc={doc} />}
+      {isCita(doc) ? (
+        <DateAskPlayer key={doc.meta.id} doc={doc} />
+      ) : isWeb(doc) ? (
+        <WebPlayer key={doc.meta.id} doc={doc} />
+      ) : isViaje(doc) ? (
+        <TripPlayer key={doc.meta.id} doc={doc} />
+      ) : (
+        <UniversePlayer key={doc.meta.id} doc={doc} />
+      )}
     </div>
   );
 }

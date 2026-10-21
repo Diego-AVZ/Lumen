@@ -4,6 +4,7 @@ import { purgeProject } from '@/lib/drafts';
 import { ConfirmDelete } from '@/hub/ConfirmDelete';
 import { WaitMark } from '@/hub/WaitMark';
 import { explainAuthError, takeAuthError } from '@/bootPath';
+import { kindLabel } from '@/schema/project';
 import { useSession } from '@/lib/session';
 import { cloudEnabled } from '@/lib/supabase';
 
@@ -175,12 +176,12 @@ export function AccountBar({
             <li key={row.id} className="rounded-[24px] bg-linen p-5">
               <button type="button" onClick={() => onOpen(row.id)} className="w-full text-left">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-brass">
-                  {row.kind === 'cita' ? 'Cita' : row.kind === 'deseos' ? 'Lista de deseos' : row.kind === 'web' ? 'Web' : 'Universo'}
+                  {kindLabel(row.kind)}
                   {' · '}
                   {row.status === 'published' ? 'Publicado' : 'Borrador'}
                   {row.slug ? ` · /u/${row.slug}` : ''}
                 </p>
-                <h3 className="mt-2 font-display text-3xl italic leading-tight">{row.title || (row.kind === 'cita' ? 'Cita' : row.kind === 'deseos' ? 'Lista de deseos' : row.kind === 'web' ? 'Web' : 'Universo')}</h3>
+                <h3 className="mt-2 font-display text-3xl italic leading-tight">{row.title || kindLabel(row.kind)}</h3>
               </button>
               <button type="button" className="mt-3 text-[13px] text-[#8a3d32]" onClick={() => setPending(row)}>
                 Eliminar
