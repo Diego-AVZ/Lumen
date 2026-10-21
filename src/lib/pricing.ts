@@ -122,11 +122,22 @@ function quoteDeseos(_doc: DeseosDocument): Quote {
 function quoteTrip(doc: TripDocument): Quote {
   let photos = 0;
   let places = 0;
-  const bits = [doc.meta.title, doc.intro.forName, doc.intro.fromName, doc.intro.title, doc.intro.line, doc.intro.when];
+  const bits = [
+    doc.meta.title,
+    doc.intro.forName,
+    doc.intro.fromName,
+    doc.intro.title,
+    doc.intro.line,
+    doc.intro.when,
+    doc.budget.note,
+    doc.budget.total,
+    doc.budget.each,
+    doc.budget.extra,
+  ];
   for (const stop of doc.stops) {
     if (stop.photo.trim()) photos += 1;
     if (stop.title.trim() || stop.lat.trim()) places += 1;
-    bits.push(stop.title, stop.body, stop.stay, stop.sleep, stop.eat, stop.arrive, stop.note, ...stop.todo);
+    bits.push(stop.title, stop.body, stop.stay, stop.sleep, stop.eat, stop.arrive, stop.note, stop.cost, ...stop.todo);
   }
   return build(
     {

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { haptic } from '@/lib/haptics';
-import { tripHeadline, type TripDocument, type TripStop } from '@/schema/viaje';
+import { TRIP_SLIDE, tripHeadline, type TripDocument, type TripStop } from '@/schema/viaje';
+import { formatMoney, parseMoney, tripMoney } from '@/viaje/money';
 import { TripMap, pinOf } from '@/viaje/TripMap';
 
 export function TripPlayer({
@@ -8,17 +9,20 @@ export function TripPlayer({
   framed = false,
   stopId,
   onStop,
+  onDrop,
 }: {
   doc: TripDocument;
   framed?: boolean;
   preview?: boolean;
   stopId?: string | null;
   onStop?: (id: string | null) => void;
+  onDrop?: (lat: number, lng: number) => void;
 }) {
   const [own, setOwn] = useState<string | null>(null);
   const openId = onStop ? (stopId ?? null) : own;
+  const money = tripMoney(doc);
   const go = (id: string | null) => {
-    haptic(id ? 'light' : 'medium');
+    haptic(id && id !== TRIP_SLIDE ? 'light' : 'medium');
     if (onStop) onStop(id);
     else setOwn(id);
   };
@@ -31,7 +35,8 @@ export function TripPlayer({
       }),
     [doc.stops],
   );
-  const index = doc.stops.findIndex((stop) => stop.id === openId);
+  const slide = openId === TRIP_SLIDE;
+  const index = slide ? -1 : doc.stops.findIndex((stop) => stop.id === openId);
   const stop = index >= 0 ? doc.stops[index] : null;
   const activePin = stop ? pins.findIndex((pin) => pin.id === stop.id) : null;
 
@@ -43,26 +48,54 @@ export function TripPlayer({
         ['--frame-safe-bottom' as string]: framed ? '14px' : undefined,
       }}
     >
-      <div className="absolute inset-x-0 top-0 h-[46%]">
-        <TripMap points={pins} activeIndex={activePin != null && activePin >= 0 ? activePin : null} onPick={go} />
+      <div className={`absolute inset-x-0 top-0 ${slide ? 'h-[14%]' : 'h-[46%]'}`}>
+        <TripMap
+          points={pins}
+          activeIndex={activePin != null && activePin >= 0 ? activePin : null}
+          onPick={go}
+          onDrop={onDrop}
+        />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
         <p className="pointer-events-none absolute left-4 top-[calc(var(--safe-top)+0.7rem)] text-[11px] uppercase tracking-[0.2em] text-white/80">
-          {stop ? `Parada ${index + 1} de ${doc.stops.length}` : 'Todo el recorrido'}
+          {slide ? 'El presupuesto' : stop ? `Parada ${index + 1} de ${doc.stops.length}` : 'Todo el recorrido'}
         </p>
-        <p className="pointer-events-none absolute right-3 top-[calc(var(--safe-top)+0.75rem)] text-[9px] tracking-wide text-white/45">Esri</p>
+        {onDrop && !slide && (
+          <p className="pointer-events-none absolute bottom-3 left-4 right-4 text-[11px] text-white/80">
+            Toca el mapa para dejar la parada.
+          </p>
+        )}
       </div>
 
-      <section className="absolute inset-x-0 bottom-0 top-[42%] flex flex-col rounded-t-[28px] bg-[#f6efe6] text-[#1b1612] shadow-[0_-18px_40px_rgba(0,0,0,0.28)]">
+      <section
+        className={`absolute inset-x-0 bottom-0 flex flex-col bg-[#f6efe6] text-[#1b1612] shadow-[0_-18px_40px_rgba(0,0,0,0.28)] ${
+          slide ? 'top-[10%] rounded-t-[22px]' : 'top-[42%] rounded-t-[28px]'
+        }`}
+      >
         <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-black/15" />
         <div className="scroll-y min-h-0 flex-1 px-5 pb-4 pt-4">
-          {stop ? (
-            <StopView stop={stop} index={index} total={doc.stops.length} />
+          {slide && money ? (
+            <MoneySlide money={money} />
+          ) : stop ? (
+            <StopView stop={stop} index={index} total={doc.stops.length} currency={doc.budget.currency} />
           ) : (
             <Overview doc={doc} onOpen={go} />
           )}
         </div>
         <footer className="flex shrink-0 items-center gap-2 border-t border-black/10 px-4 py-3 pb-[calc(var(--safe-bottom)+0.75rem)]">
-          {stop ? (
+          {slide ? (
+            <>
+              <button
+                type="button"
+                onClick={() => go(doc.stops[doc.stops.length - 1]?.id ?? null)}
+                className="rounded-full px-3 py-2 text-[13px] ring-1 ring-black/10"
+              >
+                Anterior
+              </button>
+              <button type="button" onClick={() => go(null)} className="flex-1 rounded-full bg-[#1b1612] px-3 py-2 text-[13px] text-[#f6efe6]">
+                Recorrido
+              </button>
+            </>
+          ) : stop ? (
             <>
               <button
                 type="button"
@@ -77,22 +110,36 @@ export function TripPlayer({
               </button>
               <button
                 type="button"
-                disabled={index >= doc.stops.length - 1}
-                onClick={() => go(doc.stops[index + 1]?.id ?? null)}
+                disabled={index >= doc.stops.length - 1 && !money}
+                onClick={() => {
+                  if (index >= doc.stops.length - 1) go(TRIP_SLIDE);
+                  else go(doc.stops[index + 1]?.id ?? null);
+                }}
                 className="rounded-full px-3 py-2 text-[13px] ring-1 ring-black/10 disabled:opacity-30"
               >
-                Siguiente
+                {index >= doc.stops.length - 1 ? 'Diapositiva' : 'Siguiente'}
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              disabled={!doc.stops.length}
-              onClick={() => go(doc.stops[0]?.id ?? null)}
-              className="w-full rounded-full bg-[#1b1612] px-4 py-3 text-[14px] text-[#f6efe6] disabled:opacity-30"
-            >
-              Ver la primera parada
-            </button>
+            <div className="flex w-full gap-2">
+              <button
+                type="button"
+                disabled={!doc.stops.length}
+                onClick={() => go(doc.stops[0]?.id ?? null)}
+                className="flex-1 rounded-full bg-[#1b1612] px-4 py-3 text-[14px] text-[#f6efe6] disabled:opacity-30"
+              >
+                Ver la primera parada
+              </button>
+              {money && (
+                <button
+                  type="button"
+                  onClick={() => go(TRIP_SLIDE)}
+                  className="rounded-full px-4 py-3 text-[14px] ring-1 ring-black/15"
+                >
+                  Diapositiva
+                </button>
+              )}
+            </div>
           )}
         </footer>
       </section>
@@ -131,13 +178,25 @@ function Overview({ doc, onOpen }: { doc: TripDocument; onOpen: (id: string) => 
   );
 }
 
-function StopView({ stop, index, total }: { stop: TripStop; index: number; total: number }) {
+function StopView({
+  stop,
+  index,
+  total,
+  currency,
+}: {
+  stop: TripStop;
+  index: number;
+  total: number;
+  currency: TripDocument['budget']['currency'];
+}) {
   const todos = stop.todo.map((item) => item.trim()).filter(Boolean);
+  const amount = stop.cost.trim();
   const rows = [
     stop.stay.trim() && ['Tiempo aquí', stop.stay.trim()],
     stop.sleep.trim() && ['Dormimos en', stop.sleep.trim()],
     stop.eat.trim() && ['Comemos en', stop.eat.trim()],
     stop.arrive.trim() && ['Llegamos', stop.arrive.trim()],
+    amount && ['Estimado', formatStopCost(amount, currency)],
     stop.note.trim() && ['Nota', stop.note.trim()],
   ].filter((row): row is [string, string] => Boolean(row));
   const onMap = Boolean(pinOf(stop));
@@ -181,6 +240,54 @@ function StopView({ stop, index, total }: { stop: TripStop; index: number; total
       )}
     </article>
   );
+}
+
+function MoneySlide({ money }: { money: NonNullable<ReturnType<typeof tripMoney>> }) {
+  return (
+    <article>
+      <p className="text-[11px] uppercase tracking-[0.2em] text-[#8a6232]">Diapositiva</p>
+      <h2 className="mt-2 font-display text-[2.35rem] italic leading-[0.95]">El presupuesto</h2>
+      <p className="mt-5 font-display text-[2.6rem] italic leading-none">{formatMoney(money.total, money.currency)}</p>
+      <p className="mt-2 text-[14px] text-[#1b1612]/55">
+        Total estimado
+        {money.people ? ` · ${money.people} ${money.people === 1 ? 'persona' : 'personas'}` : ''}
+      </p>
+      {money.each != null && (
+        <p className="mt-4 rounded-[18px] bg-[#1b1612] px-4 py-3 text-[#f6efe6]">
+          <span className="block text-[11px] uppercase tracking-[0.16em] text-[#e8b86d]">Por persona</span>
+          <span className="mt-1 block font-display text-[1.8rem] italic">{formatMoney(money.each, money.currency)}</span>
+        </p>
+      )}
+      {(money.days.length > 0 || money.extra > 0) && (
+        <ul className="mt-5 divide-y divide-black/10 border-y border-black/10">
+          {money.days.map((day, index) => (
+            <li key={day.id} className="flex items-baseline justify-between gap-3 py-3">
+              <span>
+                <span className="block text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Día {index + 1}</span>
+                <span className="mt-0.5 block text-[15px]">{day.title}</span>
+              </span>
+              <span className="shrink-0 text-[15px]">{formatMoney(day.amount, money.currency)}</span>
+            </li>
+          ))}
+          {money.extra > 0 && (
+            <li className="flex items-baseline justify-between gap-3 py-3">
+              <span>
+                <span className="block text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Extra</span>
+                <span className="mt-0.5 block text-[15px]">Fuera de las paradas</span>
+              </span>
+              <span className="shrink-0 text-[15px]">{formatMoney(money.extra, money.currency)}</span>
+            </li>
+          )}
+        </ul>
+      )}
+      {money.note && <p className="mt-4 text-[14px] leading-relaxed text-[#1b1612]/60">{money.note}</p>}
+    </article>
+  );
+}
+
+function formatStopCost(raw: string, currency: TripDocument['budget']['currency']) {
+  const value = parseMoney(raw);
+  return value == null ? raw : formatMoney(value, currency);
 }
 
 function Thumb({ stop, index, wide = false }: { stop: TripStop; index: number; wide?: boolean }) {

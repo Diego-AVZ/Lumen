@@ -7,12 +7,23 @@ import type { Meta } from '@/schema/universe';
  */
 export const TRIP_SCHEMA_VERSION = 1 as const;
 
+export type TripCurrency = 'EUR' | 'USD';
+
 export type TripIntro = {
   forName: string;
   fromName: string;
   title: string;
   line: string;
   when: string;
+};
+
+export type TripBudget = {
+  currency: TripCurrency;
+  people: string;
+  total: string;
+  each: string;
+  extra: string;
+  note: string;
 };
 
 export type TripStop = {
@@ -29,6 +40,8 @@ export type TripStop = {
   arrive: string;
   note: string;
   todo: string[];
+  /** Estimado de esta parada. Vacío: no se enseña. */
+  cost: string;
 };
 
 export type TripDocument = {
@@ -36,8 +49,15 @@ export type TripDocument = {
   kind: 'viaje';
   meta: Meta;
   intro: TripIntro;
+  budget: TripBudget;
   stops: TripStop[];
 };
+
+export const TRIP_SLIDE = '__slide__';
+
+export function blankBudget(): TripBudget {
+  return { currency: 'EUR', people: '', total: '', each: '', extra: '', note: '' };
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -57,6 +77,7 @@ export function createStop(): TripStop {
     arrive: '',
     note: '',
     todo: [],
+    cost: '',
   };
 }
 
@@ -75,6 +96,7 @@ export function blankTrip(): TripDocument {
       updatedAt: stamp,
     },
     intro: { forName: '', fromName: '', title: '', line: '', when: '' },
+    budget: blankBudget(),
     stops: [createStop()],
   };
 }
@@ -100,6 +122,14 @@ export function sampleTrip(): TripDocument {
       line: 'Primero el mapa entero. Luego, cada parada.',
       when: 'Cuatro días, sin prisa',
     },
+    budget: {
+      currency: 'EUR',
+      people: '2',
+      total: '',
+      each: '',
+      extra: '60',
+      note: 'El extra es el coche. Lo demás, por parada.',
+    },
     stops: [
       {
         id: 'stop_malaga',
@@ -114,6 +144,7 @@ export function sampleTrip(): TripDocument {
         arrive: 'En tren, sin maletas de más',
         note: '',
         todo: ['Dejar las cosas', 'Caminar hasta el puerto'],
+        cost: '40',
       },
       {
         id: 'stop_nerja',
@@ -128,6 +159,7 @@ export function sampleTrip(): TripDocument {
         arrive: '',
         note: 'Si hace viento, la cala de al lado.',
         todo: ['Bajar a la cala', 'No reservar la tarde'],
+        cost: '180',
       },
       {
         id: 'stop_frigiliana',
@@ -142,6 +174,7 @@ export function sampleTrip(): TripDocument {
         arrive: 'En coche, veinte minutos',
         note: '',
         todo: ['Perderse por las calles'],
+        cost: '35',
       },
       {
         id: 'stop_granada',
@@ -156,6 +189,7 @@ export function sampleTrip(): TripDocument {
         arrive: '',
         note: 'La vuelta es al día siguiente, tarde.',
         todo: ['Subir al atardecer'],
+        cost: '90',
       },
     ],
   };
@@ -192,6 +226,19 @@ function normalizeStop(value: unknown): TripStop {
     arrive: str(raw.arrive),
     note: str(raw.note),
     todo: Array.isArray(raw.todo) ? raw.todo.map((item) => str(item)).slice(0, 12) : [],
+    cost: str(raw.cost),
+  };
+}
+
+function normalizeBudget(value: unknown): TripBudget {
+  const raw = (value ?? {}) as Partial<TripBudget>;
+  return {
+    currency: raw.currency === 'USD' ? 'USD' : 'EUR',
+    people: str(raw.people),
+    total: str(raw.total),
+    each: str(raw.each),
+    extra: str(raw.extra),
+    note: str(raw.note),
   };
 }
 
@@ -225,6 +272,7 @@ export function parseTrip(input: unknown): TripDocument {
       line: str(intro.line),
       when: str(intro.when),
     },
+    budget: normalizeBudget(raw.budget),
     stops: Array.isArray(raw.stops) && raw.stops.length ? raw.stops.map(normalizeStop) : [createStop()],
   };
 }

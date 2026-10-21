@@ -151,8 +151,8 @@ export function WebStudio({ id }: { id: string }) {
           Enviar
         </button>
       </header>
-      <div className="grid min-h-0 flex-1 overflow-auto lg:grid-cols-[minmax(0,1fr)_400px] lg:overflow-hidden">
-        <aside className="order-2 min-h-0 overflow-auto border-t border-black/5 px-5 py-6 lg:order-1 lg:border-r lg:border-t-0">
+      <div className="grid min-h-0 flex-1 overflow-auto lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)] lg:overflow-hidden">
+        <aside className="order-2 min-h-0 overflow-auto border-t border-black/5 px-3 py-4 lg:order-1 lg:border-r lg:border-t-0">
           <p className="text-[11px] uppercase tracking-[0.16em] text-brass">Web personalizada</p>
           <p className="mt-2 max-w-md text-[14px] leading-relaxed text-inkwell/55">
             La base son 12,95 €, como la plantilla. Si añades de más, suma. Se cobra al publicar.
@@ -330,7 +330,7 @@ export function WebStudio({ id }: { id: string }) {
             </div>
           )}
         </aside>
-        <div className="order-1 min-h-[70vh] bg-mist lg:order-2 lg:min-h-0">
+        <div className="order-1 flex min-h-[72vh] flex-col bg-mist lg:order-2 lg:min-h-0">
           <PhoneStage>
             <WebPlayer doc={doc} preview framed pageId={focus} onPage={setFocus} />
           </PhoneStage>

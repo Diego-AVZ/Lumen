@@ -187,7 +187,7 @@ function ProjectStory({ id, cita, web, viaje }: { id: TemplateId; cita: DateAskD
       kicker: 'El mapa',
       title: 'El viaje',
       line: 'Primero el recorrido entero. Luego, cada parada.',
-      body: 'El satélite ocupa media pantalla y enseña la ruta. Se toca un punto, o se pasa al siguiente. En cada parada: el título, una frase, la foto y el plan. Tiempo aquí, dónde dormís, dónde coméis, qué hacer. Lo que se deja vacío no sale. La base son 12,95 €. Se cobra al publicar.',
+      body: 'El satélite ocupa media pantalla, con nombres de pueblos y ciudades. Se toca un punto, o se pasa al siguiente. En cada parada: el título, una frase, la foto y el plan. Al final, una diapositiva con el presupuesto: por día, por persona y el total, en euros o dólares. Lo que se deja vacío no sale. La base son 12,95 €. Se cobra al publicar.',
     },
   } as const;
   if (id === 'universo') return null;

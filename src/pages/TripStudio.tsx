@@ -8,13 +8,15 @@ import { compressImage } from '@/lib/images';
 import { uid } from '@/lib/motion';
 import { isViaje } from '@/schema/project';
 import { coordsLabel, parseLatLngPair } from '@/universe/coords';
-import { createStop, parseTrip, tripTitle, type TripDocument, type TripStop } from '@/schema/viaje';
-import { PhoneStage } from '@/studio/PhoneStage';
+import { TRIP_SLIDE, createStop, parseTrip, tripTitle, type TripBudget, type TripDocument, type TripStop } from '@/schema/viaje';
+import { PhoneRack, PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
+import { tripMoney } from '@/viaje/money';
+import { pinOf } from '@/viaje/TripMap';
 import { TripPlayer } from '@/viaje/TripPlayer';
 
 const input =
-  'mt-1.5 w-full rounded-2xl border border-black/10 bg-white px-3.5 py-2.5 text-[15px] text-inkwell outline-none placeholder:text-inkwell/30 focus:border-brass/60';
+  'mt-1 w-full rounded-xl border border-black/10 bg-white px-2.5 py-1.5 text-[13.5px] text-inkwell outline-none placeholder:text-inkwell/30 focus:border-brass/60';
 
 export function TripStudio({ id }: { id: string }) {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ export function TripStudio({ id }: { id: string }) {
     return loaded && isViaje(loaded) ? loaded : null;
   });
   const [focus, setFocus] = useState<string | null>(null);
+  const [rack, setRack] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,6 +86,10 @@ export function TripStudio({ id }: { id: string }) {
     });
   };
 
+  const patchBudget = (patch: Partial<TripBudget>) => {
+    edit((current) => ({ ...current, budget: { ...current.budget, ...patch } }));
+  };
+
   const patchStop = (stopId: string, recipe: (stop: TripStop) => TripStop) => {
     edit((current) => ({
       ...current,
@@ -108,61 +115,154 @@ export function TripStudio({ id }: { id: string }) {
     });
   };
 
+  const placeOnMap = (lat: number, lng: number) => {
+    const latText = packCoord(lat);
+    const lngText = packCoord(lng);
+    let target = focus && focus !== TRIP_SLIDE ? focus : '';
+    edit((current) => {
+      const focused = target ? current.stops.find((stop) => stop.id === target) : undefined;
+      const vacant = current.stops.find((stop) => !pinOf(stop) && !stop.title.trim());
+      const stop = focused ?? vacant;
+      if (stop) {
+        target = stop.id;
+        return {
+          ...current,
+          stops: current.stops.map((item) => (item.id === stop.id ? { ...item, lat: latText, lng: lngText } : item)),
+        };
+      }
+      const created = createStop();
+      created.lat = latText;
+      created.lng = lngText;
+      target = created.id;
+      return { ...current, stops: [...current.stops, created] };
+    });
+    if (target) setFocus(target);
+    const placed = target;
+    void nameOfPlace(lat, lng).then((name) => {
+      if (!name || !placed) return;
+      setDoc((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          stops: current.stops.map((stop) => (stop.id === placed && !stop.title.trim() ? { ...stop, title: name } : stop)),
+        };
+      });
+    });
+  };
+
+  const money = tripMoney(doc);
+  const currentStop = focus && focus !== TRIP_SLIDE ? focus : doc.stops[0]?.id ?? null;
+  const rackItems: { key: string; label: string; node: ReactNode }[] = [
+    { key: 'route', label: 'Recorrido', node: <TripPlayer doc={doc} framed stopId={null} onStop={() => undefined} /> },
+  ];
+  if (currentStop) {
+    rackItems.push({
+      key: 'stop',
+      label: doc.stops.find((stop) => stop.id === currentStop)?.title.trim() || 'Parada',
+      node: <TripPlayer doc={doc} framed stopId={currentStop} onStop={() => undefined} />,
+    });
+  }
+  if (money) {
+    rackItems.push({
+      key: 'slide',
+      label: 'Diapositiva',
+      node: <TripPlayer doc={doc} framed stopId={TRIP_SLIDE} onStop={() => undefined} />,
+    });
+  }
+
   return (
     <div className="flex h-dvh flex-col bg-linen text-inkwell">
-      <header className="flex h-16 shrink-0 items-center gap-3 border-b border-black/5 px-3 sm:px-4">
-        <Link to="/crear" className="grid h-10 w-10 place-items-center rounded-full hover:bg-white" aria-label="Mis proyectos">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-black/5 px-3">
+        <Link to="/crear" className="grid h-9 w-9 place-items-center rounded-full hover:bg-white" aria-label="Mis proyectos">
           ←
         </Link>
-        <span className="hidden font-display text-2xl italic sm:block">Lumen</span>
+        <span className="hidden font-display text-xl italic sm:block">Lumen</span>
         <input
           value={doc.meta.title}
           onChange={(event) => setDoc({ ...doc, meta: { ...doc.meta, title: event.target.value, titleTouched: true } })}
-          className="min-w-0 flex-1 bg-transparent font-display text-[1.45rem] italic outline-none"
+          className="min-w-0 flex-1 bg-transparent font-display text-[1.25rem] italic outline-none"
         />
-        <button type="button" onClick={() => setRemoving(true)} className="text-[13px] text-[#8a3d32]">
+        <button type="button" onClick={() => setRemoving(true)} className="text-[12px] text-[#8a3d32]">
           Eliminar
         </button>
         <PriceTag doc={doc} />
-        <button type="button" onClick={() => setPublishing(true)} className="rounded-full bg-inkwell px-4 py-2 text-[14px] text-linen">
+        <button type="button" onClick={() => setPublishing(true)} className="rounded-full bg-inkwell px-4 py-1.5 text-[13px] text-linen">
           Enviar
         </button>
       </header>
-      <div className="grid min-h-0 flex-1 overflow-auto lg:grid-cols-[minmax(0,1fr)_400px] lg:overflow-hidden">
-        <aside className="order-2 min-h-0 overflow-auto border-t border-black/5 px-5 py-6 lg:order-1 lg:border-r lg:border-t-0">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-brass">El viaje</p>
-          <p className="mt-2 max-w-md text-[14px] leading-relaxed text-inkwell/55">
-            Primero se ve el recorrido entero. Luego cada parada. Lo que dejes vacío no sale. La base son 12,95 € y se cobra al publicar.
+      <div className="grid min-h-0 flex-1 overflow-auto lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] lg:overflow-hidden">
+        <aside className="order-2 min-h-0 overflow-auto border-t border-black/5 px-3 py-4 lg:order-1 lg:border-r lg:border-t-0">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-brass">El viaje</p>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-inkwell/50">
+            Toca el mapa del teléfono para dejar una parada. Lo vacío no sale.
           </p>
-          <div className="mt-6 grid gap-4">
+          <div className="mt-4 grid grid-cols-2 gap-2.5">
             <Field label="Para">
               <input className={input} value={doc.intro.forName} placeholder="Clara" onChange={(event) => patchIntro({ forName: event.target.value })} />
             </Field>
             <Field label="De parte de">
               <input className={input} value={doc.intro.fromName} placeholder="Alex" onChange={(event) => patchIntro({ fromName: event.target.value })} />
             </Field>
-            <Field label="Nombre del viaje">
+            <Field label="Nombre">
               <input className={input} value={doc.intro.title} placeholder="La costa" onChange={(event) => patchIntro({ title: event.target.value })} />
             </Field>
-            <Field label="Una frase">
-              <textarea className={`${input} min-h-16 resize-none`} value={doc.intro.line} placeholder="Primero el mapa entero. Luego, cada parada." onChange={(event) => patchIntro({ line: event.target.value })} />
+            <Field label="Cuándo">
+              <input className={input} value={doc.intro.when} placeholder="Cuatro días" onChange={(event) => patchIntro({ when: event.target.value })} />
             </Field>
-            <Field label="Cuándo" hint="Si lo dejas vacío, no aparece.">
-              <input className={input} value={doc.intro.when} placeholder="Cuatro días, sin prisa" onChange={(event) => patchIntro({ when: event.target.value })} />
-            </Field>
+            <div className="col-span-2">
+              <Field label="Una frase">
+                <textarea className={`${input} min-h-12 resize-none`} value={doc.intro.line} placeholder="Primero el mapa entero." onChange={(event) => patchIntro({ line: event.target.value })} />
+              </Field>
+            </div>
           </div>
 
-          <div className="mt-8 flex items-center justify-between">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-brass">Paradas</p>
-            <button type="button" onClick={addStop} className="text-[13px] text-brass">
+          <p className="mt-5 text-[10px] uppercase tracking-[0.16em] text-brass">Presupuesto</p>
+          <div className="mt-2 grid grid-cols-2 gap-2.5">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-inkwell/40">Moneda</p>
+              <div className="mt-1 grid grid-cols-2 gap-1">
+                {(['EUR', 'USD'] as const).map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => patchBudget({ currency: code })}
+                    className={`rounded-full px-2 py-1 text-[12px] ${doc.budget.currency === code ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Field label="Gente">
+              <input className={input} inputMode="numeric" value={doc.budget.people} placeholder="2" onChange={(event) => patchBudget({ people: event.target.value })} />
+            </Field>
+            <Field label="Total estimado">
+              <input className={input} inputMode="decimal" value={doc.budget.total} placeholder="Se suma solo" onChange={(event) => patchBudget({ total: event.target.value })} />
+            </Field>
+            <Field label="Por persona">
+              <input className={input} inputMode="decimal" value={doc.budget.each} placeholder="Se divide solo" onChange={(event) => patchBudget({ each: event.target.value })} />
+            </Field>
+            <Field label="Extra">
+              <input className={input} inputMode="decimal" value={doc.budget.extra} placeholder="Coche, vuelos" onChange={(event) => patchBudget({ extra: event.target.value })} />
+            </Field>
+            <div className="col-span-2">
+              <Field label="Nota">
+                <input className={input} value={doc.budget.note} placeholder="Sin contar caprichos" onChange={(event) => patchBudget({ note: event.target.value })} />
+              </Field>
+            </div>
+          </div>
+
+          <div className="mt-5 flex items-center justify-between">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-brass">Paradas</p>
+            <button type="button" onClick={addStop} className="text-[12px] text-brass">
               Añadir
             </button>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             <button
               type="button"
               onClick={() => setFocus(null)}
-              className={`rounded-full px-3 py-1.5 text-[13px] ${focus === null ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+              className={`rounded-full px-2.5 py-1 text-[12px] ${focus === null ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
             >
               Recorrido
             </button>
@@ -171,11 +271,20 @@ export function TripStudio({ id }: { id: string }) {
                 key={stop.id}
                 type="button"
                 onClick={() => setFocus(stop.id)}
-                className={`rounded-full px-3 py-1.5 text-[13px] ${focus === stop.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+                className={`rounded-full px-2.5 py-1 text-[12px] ${focus === stop.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
               >
                 {index + 1}. {stop.title.trim() || 'Sin nombre'}
               </button>
             ))}
+            {money && (
+              <button
+                type="button"
+                onClick={() => setFocus(TRIP_SLIDE)}
+                className={`rounded-full px-2.5 py-1 text-[12px] ${focus === TRIP_SLIDE ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+              >
+                Diapositiva
+              </button>
+            )}
           </div>
 
           {doc.stops.map((stop, index) =>
@@ -185,6 +294,7 @@ export function TripStudio({ id }: { id: string }) {
                 stop={stop}
                 index={index}
                 total={doc.stops.length}
+                currency={doc.budget.currency}
                 onChange={(recipe) => patchStop(stop.id, recipe)}
                 onMove={(dir) => move(index, dir)}
                 onRemove={() => {
@@ -195,10 +305,30 @@ export function TripStudio({ id }: { id: string }) {
             ) : null,
           )}
         </aside>
-        <div className="order-1 min-h-[70vh] bg-[#1a1814] lg:order-2 lg:min-h-0">
-          <PhoneStage>
-            <TripPlayer doc={doc} framed stopId={focus} onStop={setFocus} />
-          </PhoneStage>
+        <div className="order-1 flex min-h-[72vh] flex-col bg-[#1a1814] lg:order-2 lg:min-h-0">
+          <div className="flex shrink-0 justify-end gap-1 px-4 pt-3">
+            <button
+              type="button"
+              onClick={() => setRack(false)}
+              className={`rounded-full px-3 py-1 text-[12px] ${!rack ? 'bg-white text-inkwell' : 'text-white/55'}`}
+            >
+              Un móvil
+            </button>
+            <button
+              type="button"
+              onClick={() => setRack(true)}
+              className={`rounded-full px-3 py-1 text-[12px] ${rack ? 'bg-white text-inkwell' : 'text-white/55'}`}
+            >
+              Varios
+            </button>
+          </div>
+          {rack ? (
+            <PhoneRack items={rackItems} />
+          ) : (
+            <PhoneStage>
+              <TripPlayer doc={doc} framed stopId={focus} onStop={setFocus} onDrop={placeOnMap} />
+            </PhoneStage>
+          )}
         </div>
       </div>
       {publishing && (
@@ -234,9 +364,9 @@ export function TripStudio({ id }: { id: string }) {
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/45">{label}</span>
+      <span className="text-[10px] uppercase tracking-[0.14em] text-inkwell/40">{label}</span>
       {children}
-      {hint && <span className="mt-1.5 block text-[12.5px] leading-relaxed text-inkwell/45">{hint}</span>}
+      {hint && <span className="mt-1 block text-[11px] leading-relaxed text-inkwell/40">{hint}</span>}
     </label>
   );
 }
@@ -245,6 +375,7 @@ function StopEditor({
   stop,
   index,
   total,
+  currency,
   onChange,
   onMove,
   onRemove,
@@ -252,6 +383,7 @@ function StopEditor({
   stop: TripStop;
   index: number;
   total: number;
+  currency: TripDocument['budget']['currency'];
   onChange: (recipe: (stop: TripStop) => TripStop) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
@@ -275,10 +407,10 @@ function StopEditor({
   };
 
   return (
-    <div className="mt-6 rounded-[24px] bg-white p-4 ring-1 ring-black/5">
+    <div className="mt-4 rounded-[18px] bg-white p-3 ring-1 ring-black/5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-brass">Parada {index + 1}</p>
-        <div className="flex gap-3 text-[12px] text-inkwell/45">
+        <p className="text-[10px] uppercase tracking-[0.16em] text-brass">Parada {index + 1}</p>
+        <div className="flex gap-2 text-[11px] text-inkwell/45">
           <button type="button" disabled={index === 0} onClick={() => onMove(-1)} className="disabled:opacity-30">
             Subir
           </button>
@@ -290,18 +422,18 @@ function StopEditor({
           </button>
         </div>
       </div>
-      <div className="mt-3 grid gap-3">
+      <div className="mt-2 grid gap-2">
         <Field label="Título">
           <input className={input} value={stop.title} placeholder="Nerja" onChange={(event) => onChange((current) => ({ ...current, title: event.target.value }))} />
         </Field>
         <Field label="Qué pasa aquí">
-          <textarea className={`${input} min-h-20 resize-none`} value={stop.body} onChange={(event) => onChange((current) => ({ ...current, body: event.target.value }))} />
+          <textarea className={`${input} min-h-14 resize-none`} value={stop.body} onChange={(event) => onChange((current) => ({ ...current, body: event.target.value }))} />
         </Field>
         <div>
-          {stop.photo && <img src={stop.photo} alt="" className="mb-2 h-24 w-full rounded-2xl object-cover" />}
-          <div className="flex gap-3 text-[13px]">
-            <label className="cursor-pointer rounded-full bg-inkwell px-3 py-1.5 text-linen">
-              {uploading ? 'Subiendo…' : stop.photo ? 'Cambiar miniatura' : 'Miniatura'}
+          {stop.photo && <img src={stop.photo} alt="" className="mb-2 h-16 w-full rounded-xl object-cover" />}
+          <div className="flex gap-3 text-[12px]">
+            <label className="cursor-pointer rounded-full bg-inkwell px-3 py-1 text-linen">
+              {uploading ? 'Subiendo…' : stop.photo ? 'Cambiar foto' : 'Miniatura'}
               <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(event) => void upload(event.target.files?.[0])} />
             </label>
             {stop.photo && (
@@ -310,9 +442,9 @@ function StopEditor({
               </button>
             )}
           </div>
-          {uploadError && <p className="mt-2 text-[13px] text-[#8a3d32]">{uploadError}</p>}
+          {uploadError && <p className="mt-2 text-[12px] text-[#8a3d32]">{uploadError}</p>}
         </div>
-        <Field label="En el mapa" hint="Latitud y longitud, o un enlace de Google Maps. Sin esto, la parada no se puede tocar en el recorrido.">
+        <Field label="En el mapa" hint="Toca el satélite o pega coordenadas.">
           <input
             className={input}
             value={coordsLabel(stop)}
@@ -323,25 +455,29 @@ function StopEditor({
             }}
           />
         </Field>
-        <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">El plan, si quieres</p>
-        <Field label="Tiempo aquí">
-          <input className={input} value={stop.stay} placeholder="Dos días" onChange={(event) => onChange((current) => ({ ...current, stay: event.target.value }))} />
-        </Field>
-        <Field label="Dormimos en">
-          <input className={input} value={stop.sleep} placeholder="La casa blanca" onChange={(event) => onChange((current) => ({ ...current, sleep: event.target.value }))} />
-        </Field>
-        <Field label="Comemos en">
-          <input className={input} value={stop.eat} placeholder="Donde haya pescado" onChange={(event) => onChange((current) => ({ ...current, eat: event.target.value }))} />
-        </Field>
-        <Field label="Cómo llegamos">
-          <input className={input} value={stop.arrive} placeholder="En coche, veinte minutos" onChange={(event) => onChange((current) => ({ ...current, arrive: event.target.value }))} />
-        </Field>
-        <Field label="Nota">
-          <textarea className={`${input} min-h-16 resize-none`} value={stop.note} onChange={(event) => onChange((current) => ({ ...current, note: event.target.value }))} />
-        </Field>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Tiempo aquí">
+            <input className={input} value={stop.stay} placeholder="Dos días" onChange={(event) => onChange((current) => ({ ...current, stay: event.target.value }))} />
+          </Field>
+          <Field label={`Estimado ${currency === 'USD' ? '$' : '€'}`}>
+            <input className={input} inputMode="decimal" value={stop.cost} placeholder="180" onChange={(event) => onChange((current) => ({ ...current, cost: event.target.value }))} />
+          </Field>
+          <Field label="Dormimos en">
+            <input className={input} value={stop.sleep} placeholder="La casa" onChange={(event) => onChange((current) => ({ ...current, sleep: event.target.value }))} />
+          </Field>
+          <Field label="Comemos en">
+            <input className={input} value={stop.eat} placeholder="La plaza" onChange={(event) => onChange((current) => ({ ...current, eat: event.target.value }))} />
+          </Field>
+          <Field label="Cómo llegamos">
+            <input className={input} value={stop.arrive} placeholder="En coche" onChange={(event) => onChange((current) => ({ ...current, arrive: event.target.value }))} />
+          </Field>
+          <Field label="Nota">
+            <input className={input} value={stop.note} onChange={(event) => onChange((current) => ({ ...current, note: event.target.value }))} />
+          </Field>
+        </div>
         <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/45">Qué hacer</p>
-          <div className="mt-2 grid gap-2">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-inkwell/40">Qué hacer</p>
+          <div className="mt-1.5 grid gap-1.5">
             {stop.todo.map((item, todoIndex) => (
               <div key={`${stop.id}-${todoIndex}`} className="flex gap-2">
                 <input
@@ -357,14 +493,14 @@ function StopEditor({
                 />
                 <button
                   type="button"
-                  className="text-[12px] text-[#8a3d32]"
+                  className="text-[11px] text-[#8a3d32]"
                   onClick={() => onChange((current) => ({ ...current, todo: current.todo.filter((_, lineIndex) => lineIndex !== todoIndex) }))}
                 >
                   Quitar
                 </button>
               </div>
             ))}
-            <button type="button" className="text-left text-[13px] text-brass" onClick={() => onChange((current) => ({ ...current, todo: [...current.todo, ''] }))}>
+            <button type="button" className="text-left text-[12px] text-brass" onClick={() => onChange((current) => ({ ...current, todo: [...current.todo, ''] }))}>
               Añadir algo que hacer
             </button>
           </div>
@@ -372,4 +508,21 @@ function StopEditor({
       </div>
     </div>
   );
+}
+
+function packCoord(value: number) {
+  return value.toFixed(5).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+async function nameOfPlace(lat: number, lng: number) {
+  try {
+    const response = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=es`,
+    );
+    if (!response.ok) return '';
+    const data = (await response.json()) as { city?: string; locality?: string; principalSubdivision?: string };
+    return (data.city || data.locality || data.principalSubdivision || '').trim();
+  } catch {
+    return '';
+  }
 }

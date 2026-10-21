@@ -1000,6 +1000,27 @@ button {
   color: #1b1612;
 }
 
+.trip-map .leaflet-control-zoom {
+  border: 0 !important;
+  margin: 10px !important;
+  box-shadow: none !important;
+}
+
+.trip-map .leaflet-control-zoom a {
+  width: 26px;
+  height: 26px;
+  line-height: 26px;
+  background: #1b1612;
+  color: #f6efe6;
+  border: 0;
+  font-size: 15px;
+}
+
+.trip-map .leaflet-control-zoom a:hover {
+  background: #e8b86d;
+  color: #1b1612;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sky-star, .animate-rise, .animate-depth,
   .gift-peek-bob, .gift-mini-star, .gift-mini-fall,

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Polyline, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
 import { divIcon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { parseLatLngPair } from '@/universe/coords';
@@ -52,14 +52,25 @@ function Camera({ points, focus }: { points: [number, number][]; focus: [number,
   return null;
 }
 
+function Drop({ onDrop }: { onDrop: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(event) {
+      onDrop(event.latlng.lat, event.latlng.lng);
+    },
+  });
+  return null;
+}
+
 export function TripMap({
   points,
   activeIndex,
   onPick,
+  onDrop,
 }: {
   points: { id: string; at: [number, number] }[];
   activeIndex: number | null;
   onPick: (id: string) => void;
+  onDrop?: (lat: number, lng: number) => void;
 }) {
   const focus = activeIndex != null ? points[activeIndex]?.at ?? null : null;
   const all = points.map((point) => point.at);
@@ -69,11 +80,14 @@ export function TripMap({
     <MapContainer
       center={center}
       zoom={6}
-      className="trip-map h-full w-full"
+      className={`trip-map h-full w-full ${onDrop ? 'cursor-crosshair' : ''}`}
       zoomControl={false}
       attributionControl={false}
     >
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
+      {onDrop && <ZoomControl position="bottomright" />}
+      {onDrop && <Drop onDrop={onDrop} />}
       <Camera points={all} focus={focus} />
       {all.length > 1 && (
         <Polyline
