@@ -1,15 +1,36 @@
-const EMOJIS = ['✨', '🌙', '☕', '🎬', '🎶', '🌿', '⭐', '😄', '😉', '🐶', '🐻', '🍕'];
+const EMOJIS = [
+  '❤️',
+  '💌',
+  '✨',
+  '🌙',
+  '⭐',
+  '☀️',
+  '☕',
+  '🥂',
+  '🍷',
+  '🍕',
+  '🍰',
+  '🌹',
+  '🌿',
+  '🎬',
+  '🎶',
+  '🧸',
+  '🐻',
+  '🐶',
+  '😉',
+  '😄',
+];
 
 export function EmojiBar({ onPick }: { onPick: (emoji: string) => void }) {
   return (
-    <div className="mt-1.5 flex flex-wrap gap-0.5">
+    <div className="mt-2 flex flex-wrap gap-1">
       {EMOJIS.map((emoji) => (
         <button
           key={emoji}
           type="button"
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => onPick(emoji)}
-          className="grid h-7 w-7 place-items-center rounded-full text-[15px] text-inkwell/80 hover:bg-white"
+          className="grid h-9 w-9 place-items-center rounded-full bg-white text-[18px] ring-1 ring-black/8 hover:bg-linen"
           aria-label={`Añadir ${emoji}`}
         >
           {emoji}

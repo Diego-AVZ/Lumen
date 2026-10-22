@@ -2,7 +2,7 @@ export const CARD_W = 1080;
 export const CARD_H = 1520;
 
 export type Fade = 'suave' | 'diagonal' | 'centro';
-export type Motif = 'flores' | 'ositos' | 'globos' | 'estrellas' | 'corazones' | 'mix' | 'none';
+export type Motif = 'flores' | 'ositos' | 'globos' | 'estrellas' | 'corazones' | 'luna' | 'cafe' | 'mix' | 'none';
 
 export type Paper = {
   id: string;
@@ -30,15 +30,27 @@ export const FADES: { id: Fade; label: string }[] = [
   { id: 'centro', label: 'Centro' },
 ];
 
-export const MOTIFS: { id: Motif; label: string }[] = [
-  { id: 'none', label: 'Sin motivos' },
-  { id: 'mix', label: 'Un poco de todo' },
-  { id: 'flores', label: 'Flores' },
-  { id: 'ositos', label: 'Ositos' },
-  { id: 'globos', label: 'Globos' },
-  { id: 'estrellas', label: 'Estrellas' },
-  { id: 'corazones', label: 'Corazones' },
+export const MOTIFS: { id: Motif; label: string; mark: string }[] = [
+  { id: 'none', label: 'Limpio', mark: '' },
+  { id: 'mix', label: 'Un poco de todo', mark: '✨' },
+  { id: 'flores', label: 'Flores', mark: '🌸' },
+  { id: 'ositos', label: 'Ositos', mark: '🧸' },
+  { id: 'globos', label: 'Globos', mark: '🎈' },
+  { id: 'estrellas', label: 'Estrellas', mark: '⭐' },
+  { id: 'corazones', label: 'Corazones', mark: '❤️' },
+  { id: 'luna', label: 'Luna', mark: '🌙' },
+  { id: 'cafe', label: 'Café', mark: '☕' },
 ];
+
+const MOTIF_MARKS: Record<Exclude<Motif, 'mix' | 'none'>, string[]> = {
+  flores: ['🌸', '🌺', '🌼', '🌷', '🌹'],
+  ositos: ['🧸', '🐻'],
+  globos: ['🎈'],
+  estrellas: ['✨', '⭐', '🌟'],
+  corazones: ['❤️', '💕', '🤍'],
+  luna: ['🌙', '✨', '⭐'],
+  cafe: ['☕', '🥐', '🍷'],
+};
 
 export type Box = { x: number; y: number; w: number; h: number };
 
@@ -201,27 +213,42 @@ function spark(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, c
   ctx.restore();
 }
 
-function drawMotif(ctx: CanvasRenderingContext2D, kind: Exclude<Motif, 'mix'>, x: number, y: number, s: number, paper: Paper, rand: Rand) {
+function drawMotif(ctx: CanvasRenderingContext2D, kind: Exclude<Motif, 'mix' | 'none'>, x: number, y: number, s: number, paper: Paper, rand: Rand) {
   const spot = paper.spots[Math.floor(rand() * paper.spots.length)] ?? paper.accent;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate((rand() - 0.5) * 0.5);
-  ctx.translate(-x, -y);
-  if (kind === 'flores') flower(ctx, x, y, s, spot, paper.accent);
-  else if (kind === 'ositos') bear(ctx, x, y - s * 0.2, s * 0.72, spot, paper.accent, paper.soft, paper.ink);
-  else if (kind === 'globos') {
+  if (kind === 'ositos') {
+    bear(ctx, x, y - s * 0.2, s * 0.72, spot, paper.accent, paper.soft, paper.ink);
+    return;
+  }
+  if (kind === 'globos') {
     balloon(ctx, x - s * 0.45, y + s * 0.15, s * 0.7, paper.spots[0] ?? spot, hexAlpha(paper.ink, 0.35));
     balloon(ctx, x + s * 0.42, y + s * 0.2, s * 0.62, paper.spots[1] ?? spot, hexAlpha(paper.ink, 0.35));
     balloon(ctx, x, y - s * 0.15, s * 0.78, spot, hexAlpha(paper.ink, 0.35));
-  } else if (kind === 'corazones') heart(ctx, x, y, s, spot);
-  else spark(ctx, x, y, s * 0.7, spot);
+    return;
+  }
+  if (kind === 'flores') {
+    flower(ctx, x, y, s, spot, paper.accent);
+    return;
+  }
+  if (kind === 'corazones') {
+    heart(ctx, x, y, s, spot);
+    return;
+  }
+  const marks = MOTIF_MARKS[kind] ?? ['✨'];
+  const mark = marks[Math.floor(rand() * marks.length)] ?? marks[0];
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((rand() - 0.5) * 0.45);
+  ctx.font = `${Math.round(s * 1.15)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(mark, 0, 0);
   ctx.restore();
 }
 
 function spotsFor(motif: Exclude<Motif, 'none'>, rand: Rand) {
-  const count = motif === 'ositos' ? 7 : motif === 'globos' ? 6 : motif === 'estrellas' ? 16 : motif === 'mix' ? 12 : 11;
+  const count = motif === 'ositos' ? 7 : motif === 'globos' ? 6 : motif === 'estrellas' || motif === 'luna' ? 14 : motif === 'mix' ? 12 : 11;
   const points: { x: number; y: number; s: number; kind: Exclude<Motif, 'mix' | 'none'> }[] = [];
-  const kinds: Exclude<Motif, 'mix' | 'none'>[] = ['flores', 'ositos', 'globos', 'corazones', 'estrellas'];
+  const kinds: Exclude<Motif, 'mix' | 'none'>[] = ['flores', 'ositos', 'globos', 'corazones', 'estrellas', 'luna', 'cafe'];
   for (let i = 0; i < count; i += 1) {
     const edge = i % 4;
     const along = (i + 0.5) / count;
@@ -244,7 +271,7 @@ function spotsFor(motif: Exclude<Motif, 'none'>, rand: Rand) {
       x = x < CARD_W / 2 ? 120 : CARD_W - 120;
     }
     const kind = motif === 'mix' ? kinds[i % kinds.length] : motif;
-    const scale = kind === 'estrellas' ? 28 + rand() * 26 : 54 + rand() * 36;
+    const scale = kind === 'estrellas' || kind === 'luna' ? 32 + rand() * 28 : 52 + rand() * 34;
     points.push({ x, y, s: scale, kind });
   }
   return points;

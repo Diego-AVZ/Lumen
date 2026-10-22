@@ -365,14 +365,19 @@ function SealMark({ id }: { id: CitaSeal }) {
   }
   if (id === 'dog') {
     return (
-      <svg width="34" height="22" viewBox="0 0 34 22" fill="currentColor" aria-hidden="true">
-        <ellipse cx="20" cy="11" rx="10" ry="5.2" />
-        <circle cx="8.5" cy="9.2" r="4.3" />
-        <ellipse cx="4.2" cy="11.4" rx="2.2" ry="1.3" transform="rotate(-20 4.2 11.4)" />
-        <path d="M6.2 6.2c-.2-2.4 1.2-3.6 2.4-2.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <circle cx="7.2" cy="8.6" r="0.55" fill="#3a2418" />
-        <path d="M13.5 15.2v3.2M18.2 15.6v3.4M23.2 15.4v3.1M27.4 14.6v2.8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        <path d="M29.2 9.2c2.4.2 3.6 1.2 3.2 2.2-.6 1.4-2.8.8-3.4-.2" />
+      <svg width="52" height="30" viewBox="0 0 72 40" fill="currentColor" aria-hidden="true">
+        <path d="M8.2 18.2c-3.2.4-6.2 1.6-7.4 3.2 1.2.2 2.6 0 4-.6 1.2 2.2 3.4 3.6 6.2 4.2-.2-2.2-.4-4.6-2.8-6.8z" />
+        <path d="M14 11.4c2.2-3.8 6.6-5.4 10.4-3.6 1.8 4.2.4 8.6-2.6 11.2-4.2.2-7.6-2.2-7.8-7.6z" />
+        <ellipse cx="16.8" cy="16.6" rx="8.2" ry="7" />
+        <ellipse cx="8.4" cy="19.4" rx="7.6" ry="4.2" />
+        <ellipse cx="2.4" cy="18.6" rx="2.4" ry="2" />
+        <ellipse cx="40" cy="21" rx="21" ry="8.4" />
+        <ellipse cx="56" cy="20.8" rx="8.4" ry="8.8" />
+        <path d="M62 12.6c5.4.2 9.6 3.6 10 7.4-4.2-1.6-7.4.8-9.2 3.4-.2-3.6-.6-8.2-.8-10.8z" />
+        <rect x="24" y="26.6" width="4.6" height="11.4" rx="2.3" />
+        <rect x="32.2" y="26.8" width="4.6" height="11.2" rx="2.3" />
+        <rect x="48.6" y="26.6" width="4.6" height="11.4" rx="2.3" />
+        <rect x="56.4" y="26.8" width="4.6" height="11.2" rx="2.3" />
       </svg>
     );
   }

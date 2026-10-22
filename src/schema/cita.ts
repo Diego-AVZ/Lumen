@@ -210,7 +210,7 @@ function pad(n: number) {
 }
 
 export function nearbySlots(from = new Date()) {
-  const hours = [19, 20, 21];
+  const hours = [12, 14, 17, 19, 20, 21];
   const slots: { when: string; label: string }[] = [];
   for (let day = 0; day < 10 && slots.length < 6; day += 1) {
     const date = new Date(from);

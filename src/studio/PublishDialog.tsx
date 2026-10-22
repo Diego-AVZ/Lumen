@@ -96,11 +96,11 @@ export function PublishDialog({
     urls.find((url) => /https?:\/\/(192\.168\.|10\.)/.test(url)) ??
     urls.find((url) => !url.includes('localhost') && !url.includes('127.0.0.1')) ??
     urls[0];
-  const draftLink = `${phone}/p/${doc.meta.id}`;
   const previewSlug = frozen ? doc.meta.slug : `${slugify(slug)}-${tag}`;
   const liveLink = doc.meta.status === 'published' && doc.meta.slug ? `${phone}/u/${doc.meta.slug}` : '';
-  const shareLink = liveLink || draftLink;
   const publicLink = liveLink || `${phone}/u/${previewSlug}`;
+  const kindName = isCita(doc) ? 'el sobre' : isDeseos(doc) ? 'la lista' : isViaje(doc) ? 'el viaje' : isWeb(doc) ? 'la web' : 'el universo';
+  const payTitle = quote.family === 'cita' ? 'Cita' : quote.family === 'deseos' ? 'Lista de deseos' : 'Universo';
   const forName = forNameOf(doc).trim();
   const fromName = fromNameOf(doc).trim();
   const dedication = isCita(doc) || isDeseos(doc) ? '' : isWeb(doc) || isViaje(doc) ? doc.intro.line.trim() : doc.intro.dedication.trim();
@@ -151,73 +151,77 @@ export function PublishDialog({
 
   return (
     <>
-    <div className="fixed inset-0 z-50 grid place-items-end bg-[#1b1612]/40 p-3 sm:place-items-center" onClick={onClose}>
-      <div className="max-h-[92dvh] w-full max-w-lg overflow-auto rounded-[28px] bg-linen p-6 shadow-2xl sm:p-8" onClick={(e) => e.stopPropagation()}>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-brass">Enviar</p>
-        <h2 className="mt-2 font-display text-4xl italic leading-none">
-          {due > 0 ? 'Pagar y publicar' : doc.meta.status === 'published' ? 'Actualizar' : 'Publicar'}
-        </h2>
+    <div className="fixed inset-0 z-50 grid place-items-end bg-[#1b1612]/45 p-3 sm:place-items-center" onClick={onClose}>
+      <div className="max-h-[92dvh] w-full max-w-md overflow-auto rounded-[28px] bg-linen p-6 shadow-2xl sm:p-7" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-brass">Enviar</p>
+            <h2 className="mt-1 font-display text-[2.4rem] italic leading-none">
+              {due > 0 ? 'Pagar' : liveLink ? 'Ya está publicado' : 'Publicar'}
+            </h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full px-3 py-1.5 text-[14px] text-inkwell/50">
+            Cerrar
+          </button>
+        </div>
         <p className="mt-3 text-[15px] leading-relaxed text-inkwell/65">
-          El precio lo has ido viendo al crearlo. Pagar lo publica. Si luego lo cambias y sigues dentro de lo pagado, actualizar no cobra.
+          {due > 0
+            ? `Pagas ${euros(due)} y se publica ${kindName}.`
+            : liveLink
+              ? 'Copia el enlace o diseña la invitación. Si cambias algo, actualiza.'
+              : `Ya está pagado. Publicar deja ${kindName} con un enlace.`}
         </p>
-        <ul className="mt-4 space-y-2 rounded-[22px] bg-white px-4 py-4 ring-1 ring-black/5">
-          {quote.lines.map((line) => (
-            <li key={line.id} className="flex items-baseline justify-between gap-3 text-[14px]">
-              <span>
-                {line.label}
-                <span className="ml-2 text-[12px] text-inkwell/40">{line.note}</span>
-              </span>
-              <span className="tabular-nums">{line.cents ? euros(line.cents) : 'Incluido'}</span>
-            </li>
-          ))}
-          <li className="flex flex-wrap items-center justify-between gap-3 border-t border-black/5 pt-3">
-            <span>
-              <span className="block font-display text-2xl italic">{due > 0 ? 'Falta' : 'Dentro de lo pagado'}</span>
-              <span className="font-display text-3xl italic">{due > 0 ? euros(due) : euros(quote.totalCents)}</span>
-            </span>
+
+        <div className="mt-5 rounded-[22px] bg-white px-4 py-4 ring-1 ring-black/5">
+          <ul className="space-y-2">
+            {quote.lines.map((line) => (
+              <li key={line.id} className="flex items-baseline justify-between gap-3 text-[14px]">
+                <span className="text-inkwell/75">{line.label}</span>
+                <span className="tabular-nums text-inkwell/55">{line.cents ? euros(line.cents) : 'Incluido'}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex items-end justify-between gap-3 border-t border-black/5 pt-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">{due > 0 ? 'A pagar' : 'Pagado'}</p>
+              <p className="font-display text-3xl italic leading-none">{due > 0 ? euros(due) : euros(quote.totalCents)}</p>
+            </div>
             {due > 0 ? (
               <button type="button" onClick={() => setPaying(true)} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen">
                 Pagar y publicar
               </button>
             ) : (
               <button type="button" disabled={busy} onClick={() => void publish()} className="rounded-full bg-inkwell px-5 py-3 text-[14px] text-linen disabled:opacity-50">
-                {busy ? 'Publicando…' : doc.meta.status === 'published' ? 'Actualizar' : 'Publicar'}
+                {busy ? 'Publicando…' : liveLink ? 'Actualizar' : 'Publicar'}
               </button>
             )}
-          </li>
-        </ul>
-
-        <button type="button" onClick={() => setInvite(true)} className="mt-4 w-full rounded-[22px] bg-white px-5 py-4 text-left ring-1 ring-black/10">
-          <span className="text-[11px] uppercase tracking-[0.16em] text-brass">Sin pagar</span>
-          <span className="mt-1 block font-display text-3xl italic">Diseñar la invitación</span>
-          <span className="mt-1 block text-[14px] leading-relaxed text-inkwell/55">
-            JPG para el móvil y PDF para enviarlo. El botón abre {isCita(doc) ? 'el sobre' : isDeseos(doc) ? 'la lista' : isViaje(doc) ? 'el viaje' : isWeb(doc) ? 'la web' : 'el universo'}.
-          </span>
-        </button>
-
-        <LinkBlock label={liveLink ? 'Enlace del regalo' : 'Borrador en vivo'} href={shareLink} copied={copied === shareLink} onCopy={() => void copy(shareLink)} />
-        {liveLink && <LinkBlock label="Borrador en vivo" href={draftLink} copied={copied === draftLink} onCopy={() => void copy(draftLink)} />}
-
-        <div className="mt-6">
-          <label className="text-[11px] uppercase tracking-[0.16em] text-inkwell/45">Nombre del enlace</label>
-          <div className="mt-2 flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10">
-            <span className="text-inkwell/35">/u/</span>
-            <input
-              value={frozen ? doc.meta.slug : slug}
-              onChange={(e) => setSlug(e.target.value)}
-              readOnly={frozen}
-              className="w-full bg-transparent py-3 outline-none"
-            />
           </div>
-          <p className="mt-2 text-[12.5px] leading-relaxed text-inkwell/50">
-            {frozen
-              ? 'Este enlace ya está publicado. Si lo cambias, el anterior deja de abrir.'
-              : `Quedará /u/${previewSlug}. El final es único, para que dos “para-candela” no se pisen.`}
-          </p>
         </div>
 
-        <div className="mt-6">
-          <label className="text-[11px] uppercase tracking-[0.16em] text-inkwell/45">Contraseña (opcional)</label>
+        {liveLink ? (
+          <LinkBlock label="El enlace" href={liveLink} copied={copied === liveLink} onCopy={() => void copy(liveLink)} />
+        ) : (
+          <div className="mt-5">
+            <label className="text-[11px] uppercase tracking-[0.16em] text-inkwell/45">El enlace quedará así</label>
+            <div className="mt-2 flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10">
+              <span className="shrink-0 text-inkwell/35">/u/</span>
+              <input
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                className="w-full bg-transparent py-3 outline-none"
+              />
+            </div>
+            <p className="mt-2 break-all text-[13px] text-inkwell/50">…/{previewSlug}</p>
+          </div>
+        )}
+
+        <button type="button" onClick={() => setInvite(true)} className="mt-4 w-full rounded-[22px] bg-white px-5 py-4 text-left ring-1 ring-black/10">
+          <span className="font-display text-[1.7rem] italic leading-none">Diseñar la invitación</span>
+          <span className="mt-2 block text-[14px] leading-relaxed text-inkwell/55">JPG o PDF para enviarlo. El botón abre {kindName}.</span>
+        </button>
+
+        <details className="mt-5">
+          <summary className="cursor-pointer text-[13px] text-inkwell/50">Contraseña, si quieres</summary>
           <input
             type="password"
             value={phrase}
@@ -226,7 +230,7 @@ export function PublishDialog({
               if (e.target.value) setClearLock(false);
             }}
             placeholder={hasLock ? 'Hay una. Escribe para cambiarla.' : 'Solo quien la sepa abre el regalo'}
-            className="mt-2 w-full rounded-2xl bg-white px-4 py-3 outline-none ring-1 ring-black/10"
+            className="mt-3 w-full rounded-2xl bg-white px-4 py-3 outline-none ring-1 ring-black/10"
           />
           {hasLock && (
             <label className="mt-3 flex items-center gap-2 text-[14px] text-inkwell/60">
@@ -234,21 +238,13 @@ export function PublishDialog({
               Quitar la contraseña
             </label>
           )}
-        </div>
+        </details>
 
         {error && <p className="mt-4 text-[14px] text-[#8a3d32]">{error}</p>}
 
-        <div className="mt-6">
-          <button type="button" onClick={onClose} className="text-[14px] text-inkwell/55">
-            Cerrar
-          </button>
-        </div>
-        <p className="mt-4 text-[12px] leading-relaxed text-inkwell/40">
-          También desde este ordenador: {urls[0]}/u/{frozen ? doc.meta.slug : previewSlug}
-        </p>
         {paying && due > 0 && (
           <PayModal
-            title={quote.family === 'cita' ? 'Cita' : quote.family === 'deseos' ? 'Lista de deseos' : 'Universo'}
+            title={payTitle}
             cents={due}
             projectId={doc.meta.id}
             family={quote.family}

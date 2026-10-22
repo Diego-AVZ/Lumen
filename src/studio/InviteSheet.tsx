@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
+import { EmojiBar, insertEmoji } from '@/cita/EmojiBar';
 import {
   CARD_H,
   CARD_W,
@@ -313,15 +314,16 @@ export function InviteSheet({
               ))}
             </div>
 
-            <p className="mt-7 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Motivos</p>
+            <p className="mt-7 text-[11px] uppercase tracking-[0.16em] text-inkwell/40">Iconos</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {MOTIFS.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => patch({ motif: item.id })}
-                  className={`rounded-full px-3 py-1.5 text-[13px] ${design.motif === item.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] ${design.motif === item.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
                 >
+                  {item.mark ? <span className="text-[16px] leading-none">{item.mark}</span> : null}
                   {item.label}
                 </button>
               ))}
@@ -342,6 +344,7 @@ export function InviteSheet({
                 className="mt-2 w-full rounded-2xl bg-white px-4 py-3 outline-none ring-1 ring-black/10"
               />
             </label>
+            <EmojiBar onPick={(emoji) => patch({ eyebrow: `${design.eyebrow}${emoji}`.slice(0, 42) })} />
             <div className="mt-3 flex flex-wrap gap-2">
               {['Una cita', 'Un plan', 'Una quedada', 'Un café', 'Una salida', from.trim() ? `De ${from.trim()}` : '']
                 .filter(Boolean)
@@ -366,6 +369,7 @@ export function InviteSheet({
                 className="mt-2 w-full resize-none rounded-[22px] bg-white px-4 py-3 text-[16px] outline-none ring-1 ring-black/10"
               />
             </label>
+            <EmojiBar onPick={(emoji) => patch({ line: insertEmoji(design.line, emoji).slice(0, 180) })} />
             <label className="mt-4 block">
               <span className="text-[11px] uppercase tracking-[0.16em] text-inkwell/40">El botón</span>
               <input
