@@ -26,9 +26,16 @@ function markerIcon(n: number, on: boolean, seal: boolean) {
   });
 }
 
-function Camera({ points, focus }: { points: [number, number][]; focus: [number, number] | null }) {
+function Camera({ points, focus, layout }: { points: [number, number][]; focus: [number, number] | null; layout: number }) {
   const map = useMap();
   const signature = `${focus ? focus.join(',') : 'all'}|${points.map((point) => point.join(',')).join(';')}`;
+
+  useEffect(() => {
+    const frame = () => map.invalidateSize();
+    frame();
+    const later = window.setTimeout(frame, 160);
+    return () => window.clearTimeout(later);
+  }, [map, layout]);
 
   useEffect(() => {
     const frame = () => {
@@ -66,11 +73,13 @@ export function TripMap({
   activeIndex,
   onPick,
   onDrop,
+  layout = 0,
 }: {
   points: { id: string; at: [number, number]; seal?: boolean }[];
   activeIndex: number | null;
   onPick: (id: string) => void;
   onDrop?: (lat: number, lng: number) => void;
+  layout?: number;
 }) {
   const focus = activeIndex != null ? points[activeIndex]?.at ?? null : null;
   const all = points.map((point) => point.at);
@@ -86,9 +95,9 @@ export function TripMap({
     >
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
-      {onDrop && <ZoomControl position="bottomright" />}
+      {onDrop && <ZoomControl position="topright" />}
       {onDrop && <Drop onDrop={onDrop} />}
-      <Camera points={all} focus={focus} />
+      <Camera points={all} focus={focus} layout={layout} />
       {all.length > 1 && (
         <Polyline
           positions={all}

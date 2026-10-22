@@ -44,13 +44,62 @@ function useReduced() {
   return value;
 }
 
+function TiltPhone({ children }: { children: ReactNode }) {
+  const reduced = useReduced();
+  const box = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (reduced) return;
+    let frame = 0;
+    let next = { x: 0, y: 0 };
+    const apply = () => {
+      frame = 0;
+      setTilt(next);
+    };
+    const onMove = (event: PointerEvent) => {
+      const el = box.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const dx = (event.clientX - (rect.left + rect.width / 2)) / Math.max(window.innerWidth * 0.5, 1);
+      const dy = (event.clientY - (rect.top + rect.height / 2)) / Math.max(window.innerHeight * 0.5, 1);
+      const clamp = (value: number) => Math.max(-1, Math.min(1, value));
+      next = { x: clamp(dy) * -7, y: clamp(dx) * 9 };
+      if (!frame) frame = window.requestAnimationFrame(apply);
+    };
+    const onLeave = () => {
+      next = { x: 0, y: 0 };
+      if (!frame) frame = window.requestAnimationFrame(apply);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerleave', onLeave);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerleave', onLeave);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [reduced]);
+
+  return (
+    <div
+      ref={box}
+      className="landing-tilt"
+      style={{ transform: `perspective(1100px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function ScaledPhone({ scale, children }: { scale: number; children: ReactNode }) {
   return (
-    <div style={{ width: 414 * scale, height: 868 * scale }}>
-      <div style={{ width: 414, height: 868, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-        <PhoneChrome>{children}</PhoneChrome>
+    <TiltPhone>
+      <div style={{ width: 414 * scale, height: 868 * scale }}>
+        <div style={{ width: 414, height: 868, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+          <PhoneChrome>{children}</PhoneChrome>
+        </div>
       </div>
-    </div>
+    </TiltPhone>
   );
 }
 
@@ -156,7 +205,7 @@ function ProjectStory({ id, cita, web, viaje }: { id: TemplateId; cita: DateAskD
     carta: {
       kicker: 'La página',
       title: 'Carta larga',
-      line: 'Sin cielo. Para leerla sentada.',
+      line: 'Una página, para leerla sentada.',
       body: 'Un título, el texto todo seguido, y cómo firmas al final. Sirve cuando lo que quieres decir no cabe en una estrella: que lo lea del tirón, sin pasar páginas ni buscar constelaciones. Puedes dejar también una línea pequeña al pie, como quien añade algo después de cerrar la carta.',
     },
     album: {
@@ -181,7 +230,7 @@ function ProjectStory({ id, cita, web, viaje }: { id: TemplateId; cita: DateAskD
       kicker: 'La página',
       title: 'Web personalizada',
       line: 'Como el universo, en formato web.',
-      body: 'Textos, fotos, audios y un enlace de Spotify. Se puede leer por sitios o de un tirón. Un sitio puede pedir una respuesta antes de abrirse. Un corazón se toca, como en la cita, y detrás hay un detalle o una foto. La lista no es un cielo: cada cierto tiempo se elige entre dos planes y la elección se queda. Y hay mapa. La base son 12,95 €. Se cobra al publicar.',
+      body: 'Textos, fotos, audios y un enlace de Spotify. Se puede leer por sitios o de un tirón. Un sitio puede pedir una respuesta antes de abrirse. Un corazón se toca, como en la cita, y detrás hay un detalle o una foto. Cada cierto tiempo se elige entre dos planes y la elección se queda. Y hay mapa. La base son 12,95 €. Se cobra al publicar.',
     },
     viaje: {
       kicker: 'El mapa',
@@ -433,7 +482,7 @@ export function Landing() {
 
   return (
     <div className="min-h-dvh bg-linen text-inkwell">
-      <header className="sticky top-0 z-30 flex items-center justify-between bg-linen/80 px-5 py-4 backdrop-blur-md sm:px-8">
+      <header className="sticky top-0 z-30 flex items-center justify-between bg-[#fbf6ee]/78 px-5 py-4 backdrop-blur-md sm:px-8">
         <a href="#arriba" className="font-display text-[1.7rem] italic leading-none">
           Lumen
         </a>
@@ -454,33 +503,36 @@ export function Landing() {
       </header>
 
       <main id="arriba">
-        <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 pb-16 pt-8 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:pt-14">
-          <div>
-            <p className="text-[12px] uppercase tracking-[0.28em] text-brass">Estudio de universos</p>
-            <h1 className="mt-5 max-w-[11ch] font-display text-[clamp(3.3rem,7vw,5.6rem)] italic leading-[0.9] tracking-[-0.03em]">
-              Un regalo que se explora.
-            </h1>
-            <p className="mt-6 max-w-[40ch] text-[18px] leading-relaxed text-inkwell/70">
-              Detalles únicos para conectar. Marca la diferencia. Cuida a las personas que más te importan. <b>Regala diferente.</b> 
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link to="/crear/nuevo" className="rounded-full bg-inkwell px-6 py-3.5 text-[15px] text-linen">
-                Crear un proyecto
-              </Link>
-              <a href="#proyectos" className="rounded-full px-5 py-3.5 text-[15px] text-inkwell/70">
-                Ver opciones
-              </a>
+        <section className="landing-hero relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 landing-hero-wash" />
+          <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 pb-20 pt-10 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:pt-16">
+            <div>
+              <p className="text-[12px] uppercase tracking-[0.28em] text-brass">Para alguien concreto</p>
+              <h1 className="landing-ink-title mt-5 max-w-[12ch] font-display text-[clamp(3.3rem,7vw,5.6rem)] italic leading-[0.9] tracking-[-0.03em]">
+                Un regalo que se abre despacio.
+              </h1>
+              <p className="mt-6 max-w-[42ch] text-[18px] leading-relaxed text-inkwell/70">
+                Lo escribes tú, con las palabras de siempre. Lo abre en el móvil, cuando quiera, sin prisa. Un universo, un viaje, un sobre: lo que os represente.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link to="/crear/nuevo" className="rounded-full bg-inkwell px-6 py-3.5 text-[15px] text-linen shadow-[0_16px_40px_rgba(40,28,16,0.18)]">
+                  Crear un proyecto
+                </Link>
+                <a href="#proyectos" className="rounded-full px-5 py-3.5 text-[15px] text-inkwell/70">
+                  Ver cómo son
+                </a>
+              </div>
             </div>
+            <HeroTour doc={scenes.hero} />
           </div>
-          <HeroTour doc={scenes.hero} />
         </section>
 
-        <section id="como" className="border-y border-black/5">
+        <section id="como" className="landing-steps border-y border-black/5">
           <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-8 md:grid-cols-3">
             {[
-              ['01', 'Escribes como si se lo contaras', 'Crea a tu gusto. Personaliza cada detalle. Recuérdaselo'],
-              ['02', 'Visualiza en tiempo real', 'Revisa como evoluciona tu regalo. Modifica, edita y guarda.'],
-              ['03', 'Publica el proyecto', 'Envíaselo en PDF o en un QR. Disfruta de su sonrisa al verlo.'],
+              ['01', 'Escribes como se lo dirías', 'Las palabras, las fotos, el día. Como si estuviera al lado y no quisieras equivocarte.'],
+              ['02', 'Lo ves en el móvil', 'Mientras lo haces, se ve igual que lo va a ver esa persona. Puedes cambiarlo hasta que te suene a vosotros.'],
+              ['03', 'Se lo envías', 'Un enlace, un PDF o un QR. Y te quedas con esa duda buena de si ya lo abrió.'],
             ].map(([n, title, body]) => (
               <article key={n}>
                 <p className="font-display text-xl italic text-brass">{n}</p>
@@ -503,11 +555,11 @@ export function Landing() {
           ))}
           <div className="relative mx-auto max-w-6xl px-5 py-20 sm:px-8">
             <p className="text-[12px] uppercase tracking-[0.24em] text-[#e8b86d]">Los proyectos</p>
-            <h2 className="mt-4 max-w-[16ch] font-display text-[clamp(2.6rem,5vw,4.2rem)] italic leading-[0.95]">
-              No tiene que ser un cielo.
+            <h2 className="landing-gold-title mt-4 max-w-[18ch] font-display text-[clamp(2.6rem,5vw,4.2rem)] italic leading-[0.95]">
+              Cada regalo tiene su forma.
             </h2>
             <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-[#f3ead8]/70">
-              En crear eliges el regalo. Un universo, una web, un viaje, una cita, una lista de deseos, una carta, un álbum o un mapa. Toca uno y ves qué cabe dentro.
+              Un universo, una web, un viaje, un sobre, una lista. Toca uno y ves qué cabe dentro: lo eliges según lo que quieres contar, no según un molde.
             </p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -531,7 +583,7 @@ export function Landing() {
             {project === 'universo' && (
             <div id="estrellas" className="mt-6 divide-y divide-white/10">
               <p className="py-8 max-w-xl text-[16px] leading-relaxed text-[#f3ead8]/70">
-                Dentro del universo cada cosa es una estrella, y cada una se abre distinto. La música no es un menú: es un botón en el cielo, o dentro de un capítulo. Pegas un enlace de Spotify —canción, álbum o lista— y suena.
+                Dentro del universo cada cosa es una estrella, y cada una se abre distinto. La música puede estar en el cielo o dentro de un capítulo: pegas un enlace de Spotify —canción, álbum o lista— y suena.
               </p>
               {features.map((feature, index) => {
                 const phone = 868 * 0.54;
@@ -564,14 +616,16 @@ export function Landing() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-3xl px-5 py-24 text-center sm:px-8">
-          <h2 className="font-display text-[clamp(2.6rem,5vw,4rem)] italic leading-[1]">Demuestra cuanto te importa</h2>
-          <p className="mx-auto mt-5 max-w-lg text-[17px] leading-relaxed text-inkwell/65">
-            Crea rápido, personaliza con calma y publicalo en un instante. Pero siempre con cariño
-          </p>
-          <Link to="/crear/nuevo" className="mt-8 inline-block rounded-full bg-inkwell px-6 py-3.5 text-linen">
-            Crear mi regalo
-          </Link>
+        <section className="landing-cta relative overflow-hidden">
+          <div className="relative mx-auto max-w-3xl px-5 py-24 text-center sm:px-8">
+            <h2 className="landing-ink-title font-display text-[clamp(2.6rem,5vw,4rem)] italic leading-[1]">Que lo tenga a mano.</h2>
+            <p className="mx-auto mt-5 max-w-lg text-[17px] leading-relaxed text-inkwell/65">
+              Lo haces con calma. Lo publicas cuando esté. Lo abre cuando esté a solas, en el móvil, como quien guarda una carta.
+            </p>
+            <Link to="/crear/nuevo" className="mt-8 inline-block rounded-full bg-inkwell px-6 py-3.5 text-linen shadow-[0_16px_40px_rgba(40,28,16,0.16)]">
+              Crear mi regalo
+            </Link>
+          </div>
         </section>
       </main>
 

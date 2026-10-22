@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { useAttached } from '@/attach/useAttached';
 import { haptic } from '@/lib/haptics';
 import { isCita } from '@/schema/project';
@@ -29,6 +29,9 @@ export function TripPlayer({
   const [own, setOwn] = useState<string | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [sealOpen, setSealOpen] = useState(false);
+  const stage = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ startY: number; start: number } | null>(null);
+  const [lift, setLift] = useState(nested ? 0.74 : 0.66);
   const openId = onStop ? (stopId ?? null) : own;
   const money = tripMoney(doc);
   const look = tripLook(doc.look);
@@ -53,8 +56,23 @@ export function TripPlayer({
   const stop = index >= 0 ? doc.stops[index] : null;
   const activePin = stop ? pins.findIndex((pin) => pin.id === stop.id) : null;
 
+  const onHandleDown = (event: PointerEvent<HTMLButtonElement>) => {
+    drag.current = { startY: event.clientY, start: lift };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const onHandleMove = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!drag.current || !stage.current) return;
+    const height = stage.current.clientHeight || 1;
+    const next = drag.current.start - (event.clientY - drag.current.startY) / height;
+    setLift(Math.min(0.9, Math.max(0.34, next)));
+  };
+  const onHandleUp = () => {
+    drag.current = null;
+  };
+
   return (
     <div
+      ref={stage}
       className="relative h-full w-full overflow-hidden"
       style={{
         background: look.map,
@@ -64,31 +82,40 @@ export function TripPlayer({
         ['--safe-top' as string]: nested ? '0px' : undefined,
       }}
     >
-      <div className={`absolute inset-x-0 top-0 ${slide ? 'h-[22%]' : nested ? 'h-[28%]' : 'h-[34%]'}`}>
+      <div className="absolute inset-0 z-0">
         <TripMap
           points={pins}
           activeIndex={activePin != null && activePin >= 0 ? activePin : null}
           onPick={go}
           onDrop={onDrop}
+          layout={lift}
         />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
-        <p className="pointer-events-none absolute left-4 top-[calc(var(--safe-top)+0.7rem)] text-[11px] uppercase tracking-[0.2em] text-white/80">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-20 bg-gradient-to-b from-black/45 to-transparent" />
+        <p className="pointer-events-none absolute left-4 top-[calc(var(--safe-top)+0.7rem)] z-[1] text-[11px] uppercase tracking-[0.2em] text-white/80">
           {slide ? 'Cuentas' : stop ? `Parada ${index + 1} de ${doc.stops.length}` : 'Todo el recorrido'}
         </p>
         {onDrop && !slide && (
-          <p className="pointer-events-none absolute bottom-8 left-4 right-14 text-[11px] text-white/80">
+          <p className="pointer-events-none absolute left-4 right-14 z-[1] text-[11px] text-white/80" style={{ bottom: `calc(${lift * 100}% + 0.7rem)` }}>
             Toca el mapa para dejar la parada.
           </p>
         )}
       </div>
 
       <section
-        className={`absolute inset-x-0 bottom-0 flex flex-col shadow-[0_-12px_28px_rgba(0,0,0,0.22)] ${
-          slide ? 'top-[18%] rounded-t-[22px]' : nested ? 'top-[25%] rounded-t-[22px]' : 'top-[31%] rounded-t-[26px]'
-        }`}
-        style={{ background: look.sheet, color: look.ink }}
+        className="absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[26px] shadow-[0_-12px_28px_rgba(0,0,0,0.22)]"
+        style={{ height: `${lift * 100}%`, background: look.sheet, color: look.ink }}
       >
-        <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-black/15" />
+        <button
+          type="button"
+          aria-label="Mover la ficha"
+          className="flex shrink-0 cursor-grab touch-none flex-col items-center pb-1 pt-2 active:cursor-grabbing"
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          onPointerCancel={onHandleUp}
+        >
+          <span className="h-1.5 w-12 rounded-full bg-black/20" />
+        </button>
         <div className="scroll-y min-h-0 flex-1 px-5 pb-4 pt-4">
           {slide ? (
             <Accounts doc={doc} preview={preview} money={money} />

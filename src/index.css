@@ -624,12 +624,65 @@ button {
     #12100e;
 }
 
+.landing-hero {
+  background:
+    radial-gradient(ellipse 70% 80% at 0% -10%, rgba(232, 184, 109, 0.28), transparent 52%),
+    radial-gradient(ellipse 50% 60% at 100% 8%, rgba(196, 120, 132, 0.14), transparent 48%),
+    radial-gradient(ellipse 40% 50% at 70% 100%, rgba(120, 150, 148, 0.1), transparent 50%),
+    linear-gradient(180deg, #fbf6ee 0%, #f3ead8 55%, #efe4d2 100%);
+}
+
+.landing-hero-wash {
+  background:
+    radial-gradient(ellipse 45% 40% at 78% 30%, rgba(232, 184, 109, 0.2), transparent 70%),
+    radial-gradient(ellipse 30% 35% at 18% 80%, rgba(180, 130, 90, 0.1), transparent 70%);
+}
+
+.landing-steps {
+  background:
+    linear-gradient(180deg, rgba(247, 241, 232, 0.4), rgba(255, 250, 244, 0.9));
+}
+
+.landing-cta {
+  background:
+    radial-gradient(ellipse 60% 70% at 50% -20%, rgba(232, 184, 109, 0.22), transparent 55%),
+    radial-gradient(ellipse 40% 50% at 100% 100%, rgba(196, 120, 132, 0.1), transparent 50%),
+    #f7f1e7;
+}
+
+.landing-ink-title {
+  background: linear-gradient(118deg, #1b1612 0%, #3a2a1c 42%, #8a6232 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-gold-title {
+  background: linear-gradient(115deg, #fff6ea 0%, #e8b86d 48%, #f3ead8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-tilt {
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+  filter: drop-shadow(0 28px 48px rgba(40, 28, 16, 0.16));
+}
+
+.landing-night .landing-tilt {
+  filter: drop-shadow(0 32px 56px rgba(0, 0, 0, 0.48));
+}
+
 .landing-night {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 80% -10%, rgba(232, 184, 109, 0.18), transparent 46%),
-    #100e0c;
+    radial-gradient(ellipse at 12% -8%, rgba(232, 184, 109, 0.24), transparent 44%),
+    radial-gradient(ellipse at 92% 28%, rgba(90, 130, 148, 0.16), transparent 48%),
+    radial-gradient(ellipse at 48% 108%, rgba(122, 48, 64, 0.18), transparent 46%),
+    linear-gradient(180deg, #171310 0%, #0c0a09 46%, #101418 100%);
 }
 
 .landing-streak {
@@ -657,6 +710,11 @@ button {
   .vale-wish,
   .vale-streak,
   .landing-streak { animation: none; }
+
+  .landing-tilt {
+    transform: none !important;
+    transition: none;
+  }
 }
 
 .album-page {
@@ -1005,6 +1063,11 @@ button {
   font-size: 14px;
   background: #7a1f32;
   color: #fff6ea;
+}
+
+.trip-map {
+  isolation: isolate;
+  z-index: 0;
 }
 
 .trip-map .leaflet-control-zoom {
