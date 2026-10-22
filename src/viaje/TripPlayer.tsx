@@ -57,11 +57,14 @@ export function TripPlayer({
   const activePin = stop ? pins.findIndex((pin) => pin.id === stop.id) : null;
 
   const onHandleDown = (event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
     drag.current = { startY: event.clientY, start: lift };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const onHandleMove = (event: PointerEvent<HTMLButtonElement>) => {
     if (!drag.current || !stage.current) return;
+    event.preventDefault();
     const height = stage.current.clientHeight || 1;
     const next = drag.current.start - (event.clientY - drag.current.startY) / height;
     setLift(Math.min(0.9, Math.max(0.34, next)));
@@ -70,10 +73,19 @@ export function TripPlayer({
     drag.current = null;
   };
 
+  useEffect(() => {
+    const hold = (event: TouchEvent) => {
+      if (!drag.current) return;
+      event.preventDefault();
+    };
+    document.addEventListener('touchmove', hold, { passive: false });
+    return () => document.removeEventListener('touchmove', hold);
+  }, []);
+
   return (
     <div
       ref={stage}
-      className="relative h-full w-full overflow-hidden"
+      className="relative h-full w-full overflow-hidden overscroll-none"
       style={{
         background: look.map,
         color: '#f6efe6',
@@ -108,13 +120,13 @@ export function TripPlayer({
         <button
           type="button"
           aria-label="Mover la ficha"
-          className="flex shrink-0 cursor-grab touch-none flex-col items-center pb-1 pt-2 active:cursor-grabbing"
+          className="flex w-full shrink-0 cursor-grab touch-none flex-col items-center py-4 active:cursor-grabbing"
           onPointerDown={onHandleDown}
           onPointerMove={onHandleMove}
           onPointerUp={onHandleUp}
           onPointerCancel={onHandleUp}
         >
-          <span className="h-1.5 w-12 rounded-full bg-black/20" />
+          <span className="h-2 w-16 rounded-full bg-black/28" />
         </button>
         <div className="scroll-y min-h-0 flex-1 px-5 pb-4 pt-4">
           {slide ? (

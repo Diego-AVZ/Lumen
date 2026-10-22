@@ -26,35 +26,37 @@ function markerIcon(n: number, on: boolean, seal: boolean) {
   });
 }
 
+function sheetPad(map: ReturnType<typeof useMap>, layout: number) {
+  const size = map.getSize();
+  const sheet = Math.round(size.y * Math.min(0.9, Math.max(0, layout)));
+  return {
+    paddingTopLeft: [20, 56] as [number, number],
+    paddingBottomRight: [20, sheet + 24] as [number, number],
+  };
+}
+
 function Camera({ points, focus, layout }: { points: [number, number][]; focus: [number, number] | null; layout: number }) {
   const map = useMap();
-  const signature = `${focus ? focus.join(',') : 'all'}|${points.map((point) => point.join(',')).join(';')}`;
-
-  useEffect(() => {
-    const frame = () => map.invalidateSize();
-    frame();
-    const later = window.setTimeout(frame, 160);
-    return () => window.clearTimeout(later);
-  }, [map, layout]);
+  const signature = `${focus ? focus.join(',') : 'all'}|${points.map((point) => point.join(',')).join(';')}|${Math.round(layout * 20)}`;
 
   useEffect(() => {
     const frame = () => {
       map.invalidateSize();
+      const pad = sheetPad(map, layout);
       if (focus) {
-        map.flyTo(focus, 13.2, { duration: 0.85 });
+        map.fitBounds([focus, focus], { ...pad, maxZoom: 13.2, animate: true });
         return;
       }
       if (points.length === 0) return;
       if (points.length === 1) {
-        map.flyTo(points[0], 11, { duration: 0.7 });
+        map.fitBounds([points[0], points[0]], { ...pad, maxZoom: 11, animate: true });
         return;
       }
-      map.fitBounds(points, { padding: [36, 36], maxZoom: 9, animate: true });
+      map.fitBounds(points, { ...pad, maxZoom: 9, animate: true });
     };
-    frame();
-    const later = window.setTimeout(frame, 240);
+    const later = window.setTimeout(frame, 180);
     return () => window.clearTimeout(later);
-  }, [map, signature]);
+  }, [map, signature, layout]);
 
   return null;
 }
