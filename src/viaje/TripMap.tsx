@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
 import { divIcon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -26,37 +26,50 @@ function markerIcon(n: number, on: boolean, seal: boolean) {
   });
 }
 
-function sheetPad(map: ReturnType<typeof useMap>, layout: number) {
-  const size = map.getSize();
-  const sheet = Math.round(size.y * Math.min(0.9, Math.max(0, layout)));
-  return {
-    paddingTopLeft: [20, 56] as [number, number],
-    paddingBottomRight: [20, sheet + 24] as [number, number],
-  };
-}
-
-function Camera({ points, focus, layout }: { points: [number, number][]; focus: [number, number] | null; layout: number }) {
+function Camera({ points, focus }: { points: [number, number][]; focus: [number, number] | null }) {
   const map = useMap();
-  const signature = `${focus ? focus.join(',') : 'all'}|${points.map((point) => point.join(',')).join(';')}|${Math.round(layout * 20)}`;
+  const place = `${focus ? focus.join(',') : 'all'}|${points.map((point) => point.join(',')).join(';')}`;
+  const pointsRef = useRef(points);
+  const focusRef = useRef(focus);
+  pointsRef.current = points;
+  focusRef.current = focus;
 
   useEffect(() => {
-    const frame = () => {
-      map.invalidateSize();
-      const pad = sheetPad(map, layout);
-      if (focus) {
-        map.fitBounds([focus, focus], { ...pad, maxZoom: 13.2, animate: true });
+    let frame = 0;
+    let timer = 0;
+    const aim = (animate: boolean) => {
+      if (map.getContainer().clientHeight < 48) return;
+      map.invalidateSize(false);
+      const pad = { paddingTopLeft: [16, 44] as [number, number], paddingBottomRight: [16, 16] as [number, number], animate };
+      const here = focusRef.current;
+      const all = pointsRef.current;
+      if (here) {
+        map.fitBounds([here, here], { ...pad, maxZoom: 13 });
         return;
       }
-      if (points.length === 0) return;
-      if (points.length === 1) {
-        map.fitBounds([points[0], points[0]], { ...pad, maxZoom: 11, animate: true });
+      if (all.length === 0) return;
+      if (all.length === 1) {
+        map.fitBounds([all[0], all[0]], { ...pad, maxZoom: 11 });
         return;
       }
-      map.fitBounds(points, { ...pad, maxZoom: 9, animate: true });
+      map.fitBounds(all, { ...pad, maxZoom: 9 });
     };
-    const later = window.setTimeout(frame, 180);
-    return () => window.clearTimeout(later);
-  }, [map, signature, layout]);
+    const schedule = (animate: boolean) => {
+      window.clearTimeout(timer);
+      window.cancelAnimationFrame(frame);
+      timer = window.setTimeout(() => {
+        frame = window.requestAnimationFrame(() => aim(animate));
+      }, animate ? 40 : 16);
+    };
+    schedule(true);
+    const watcher = new ResizeObserver(() => schedule(false));
+    watcher.observe(map.getContainer());
+    return () => {
+      watcher.disconnect();
+      window.clearTimeout(timer);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [map, place]);
 
   return null;
 }
@@ -75,13 +88,11 @@ export function TripMap({
   activeIndex,
   onPick,
   onDrop,
-  layout = 0,
 }: {
   points: { id: string; at: [number, number]; seal?: boolean }[];
   activeIndex: number | null;
   onPick: (id: string) => void;
   onDrop?: (lat: number, lng: number) => void;
-  layout?: number;
 }) {
   const focus = activeIndex != null ? points[activeIndex]?.at ?? null : null;
   const all = points.map((point) => point.at);
@@ -99,7 +110,7 @@ export function TripMap({
       <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}" />
       {onDrop && <ZoomControl position="topright" />}
       {onDrop && <Drop onDrop={onDrop} />}
-      <Camera points={all} focus={focus} layout={layout} />
+      <Camera points={all} focus={focus} />
       {all.length > 1 && (
         <Polyline
           positions={all}

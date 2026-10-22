@@ -94,20 +94,19 @@ export function TripPlayer({
         ['--safe-top' as string]: nested ? '0px' : undefined,
       }}
     >
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-x-0 top-0 z-0 overflow-hidden" style={{ height: `calc(${(1 - lift) * 100}% + 18px)` }}>
         <TripMap
           points={pins}
           activeIndex={activePin != null && activePin >= 0 ? activePin : null}
           onPick={go}
           onDrop={onDrop}
-          layout={lift}
         />
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-20 bg-gradient-to-b from-black/45 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-16 bg-gradient-to-b from-black/45 to-transparent" />
         <p className="pointer-events-none absolute left-4 top-[calc(var(--safe-top)+0.7rem)] z-[1] text-[11px] uppercase tracking-[0.2em] text-white/80">
           {slide ? 'Cuentas' : stop ? `Parada ${index + 1} de ${doc.stops.length}` : 'Todo el recorrido'}
         </p>
         {onDrop && !slide && (
-          <p className="pointer-events-none absolute left-4 right-14 z-[1] text-[11px] text-white/80" style={{ bottom: `calc(${lift * 100}% + 0.7rem)` }}>
+          <p className="pointer-events-none absolute bottom-6 left-4 right-14 z-[1] text-[11px] text-white/80">
             Toca el mapa para dejar la parada.
           </p>
         )}
