@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, t
 import { useAttached } from '@/attach/useAttached';
 import { haptic } from '@/lib/haptics';
 import { isCita } from '@/schema/project';
-import { TRIP_SLIDE, sealIsOpen, sealOpensLabel, tripHeadline, tripLook, type StopSeal, type TripDocument, type TripStop } from '@/schema/viaje';
+import { TRIP_SLIDE, sealIsOpen, sealOpensLabel, stopDay, tripHeadline, tripLook, type StopSeal, type TripDocument, type TripStop } from '@/schema/viaje';
 
 const DateAskPlayer = lazy(() => import('@/cita/DateAskPlayer').then((mod) => ({ default: mod.DateAskPlayer })));
 import { formatMoney, parseMoney, tripMoney } from '@/viaje/money';
@@ -51,7 +51,8 @@ export function TripPlayer({
       }),
     [doc.stops],
   );
-  const slide = openId === TRIP_SLIDE;
+  const accountsOn = doc.showAccounts !== false;
+  const slide = openId === TRIP_SLIDE && (accountsOn || Boolean(onStop));
   const index = slide ? -1 : doc.stops.findIndex((stop) => stop.id === openId);
   const stop = index >= 0 ? doc.stops[index] : null;
   const activePin = stop ? pins.findIndex((pin) => pin.id === stop.id) : null;
@@ -103,7 +104,7 @@ export function TripPlayer({
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-16 bg-gradient-to-b from-black/45 to-transparent" />
         <p className="pointer-events-none absolute left-4 top-[calc(var(--safe-top)+0.7rem)] z-[1] text-[11px] uppercase tracking-[0.2em] text-white/80">
-          {slide ? 'Cuentas' : stop ? `Parada ${index + 1} de ${doc.stops.length}` : 'Todo el recorrido'}
+          {slide ? 'Cuentas' : stop ? stopCaption(stop, index, doc.stops.length) : 'Todo el recorrido'}
         </p>
         {onDrop && !slide && (
           <p className="pointer-events-none absolute bottom-6 left-4 right-14 z-[1] text-[11px] text-white/80">
@@ -118,16 +119,17 @@ export function TripPlayer({
       >
         <button
           type="button"
-          aria-label="Mover la ficha"
-          className="flex w-full shrink-0 cursor-grab touch-none flex-col items-center py-4 active:cursor-grabbing"
+          aria-label="Desliza para subir o bajar"
+          className="flex w-full shrink-0 cursor-grab touch-none flex-col items-center gap-1.5 border-b border-current/10 pb-2.5 pt-3 active:cursor-grabbing"
           onPointerDown={onHandleDown}
           onPointerMove={onHandleMove}
           onPointerUp={onHandleUp}
           onPointerCancel={onHandleUp}
         >
-          <span className="h-2 w-16 rounded-full bg-black/28" />
+          <span className="h-1.5 w-16 rounded-full bg-current opacity-70" />
+          <span className="text-[11px] uppercase tracking-[0.22em] opacity-75">Desliza ↑↓</span>
         </button>
-        <div className="scroll-y min-h-0 flex-1 px-5 pb-4 pt-4">
+        <div className="scroll-y min-h-0 flex-1 px-5 pb-4 pt-3">
           {slide ? (
             <Accounts doc={doc} preview={preview} money={money} />
           ) : stop ? (
@@ -171,16 +173,18 @@ export function TripPlayer({
               <button type="button" onClick={() => go(null)} className="flex-1 rounded-full px-3 py-2.5 text-[13px]" style={{ background: look.ink, color: look.sheet }}>
                 Recorrido
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (index >= doc.stops.length - 1) go(TRIP_SLIDE);
-                  else go(doc.stops[index + 1]?.id ?? null);
-                }}
-                className="rounded-full px-3 py-2 text-[13px] ring-1 ring-black/10"
-              >
-                {index >= doc.stops.length - 1 ? 'Cuentas' : 'Siguiente'}
-              </button>
+              {(index < doc.stops.length - 1 || accountsOn) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (index >= doc.stops.length - 1) go(TRIP_SLIDE);
+                    else go(doc.stops[index + 1]?.id ?? null);
+                  }}
+                  className="rounded-full px-3 py-2 text-[13px] ring-1 ring-black/10"
+                >
+                  {index >= doc.stops.length - 1 ? 'Cuentas' : 'Siguiente'}
+                </button>
+              )}
             </>
           ) : (
             <div className="flex w-full gap-2">
@@ -193,13 +197,15 @@ export function TripPlayer({
               >
                 Ver la primera parada
               </button>
-              <button
-                type="button"
-                onClick={() => go(TRIP_SLIDE)}
-                className="rounded-full px-4 py-3 text-[14px] ring-1 ring-black/15"
-              >
-                Cuentas
-              </button>
+              {accountsOn && (
+                <button
+                  type="button"
+                  onClick={() => go(TRIP_SLIDE)}
+                  className="rounded-full px-4 py-3 text-[14px] ring-1 ring-black/15"
+                >
+                  Cuentas
+                </button>
+              )}
             </div>
           )}
         </footer>
@@ -248,7 +254,12 @@ function Overview({ doc, onOpen }: { doc: TripDocument; onOpen: (id: string) => 
             <li key={stop.id} className="w-[7.2rem] shrink-0">
               <button type="button" onClick={() => onOpen(stop.id)} className="w-full text-left">
                 <Thumb stop={stop} index={index} />
-                <span className="mt-2 block font-display text-[1.05rem] italic leading-tight">{stop.title.trim() || `Parada ${index + 1}`}</span>
+                {stopDay(stop) != null && (
+                  <span className="mt-2 block text-[10px] uppercase tracking-[0.14em] text-[#8a6232]">Día {stopDay(stop)}</span>
+                )}
+                <span className={`${stopDay(stop) != null ? 'mt-0.5' : 'mt-2'} block font-display text-[1.05rem] italic leading-tight`}>
+                  {stop.title.trim() || `Parada ${index + 1}`}
+                </span>
               </button>
             </li>
           ))}
@@ -291,6 +302,7 @@ function StopView({
   return (
     <article>
       <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: accent }}>
+        {stopDay(stop) != null ? `Día ${stopDay(stop)} · ` : ''}
         {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
       </p>
       {stop.seal && <SealNote seal={stop.seal} accent={accent} onOpen={onOpenSeal} />}
@@ -405,13 +417,23 @@ function Accounts({
           )}
           {(money.days.length > 0 || money.extra > 0) && (
             <ul className="mt-5 divide-y divide-black/10 border-y border-black/10">
-              {money.days.map((day, index) => (
-                <li key={day.id} className="flex items-baseline justify-between gap-3 py-3">
-                  <span>
-                    <span className="block text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Día {index + 1}</span>
-                    <span className="mt-0.5 block text-[15px]">{day.title}</span>
-                  </span>
-                  <span className="shrink-0 text-[15px]">{formatMoney(day.amount, money.currency)}</span>
+              {money.days.map((group) => (
+                <li key={group.id} className="py-3">
+                  {group.day != null && <p className="text-[11px] uppercase tracking-[0.16em] text-[#8a6232]">Día {group.day}</p>}
+                  <ul className={group.day != null ? 'mt-1.5 grid gap-1.5' : ''}>
+                    {group.lines.map((line) => (
+                      <li key={line.id} className="flex items-baseline justify-between gap-3">
+                        <span className="text-[15px]">{line.title}</span>
+                        <span className="shrink-0 text-[15px]">{formatMoney(line.amount, money.currency)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {group.lines.length > 1 && (
+                    <p className="mt-2 flex items-baseline justify-between gap-3 text-[13px] text-[#1b1612]/50">
+                      <span>En el día</span>
+                      <span>{formatMoney(group.amount, money.currency)}</span>
+                    </p>
+                  )}
                 </li>
               ))}
               {money.extra > 0 && (
@@ -518,6 +540,12 @@ function SealAsk({ seal }: { seal: StopSeal }) {
 function formatStopCost(raw: string, currency: TripDocument['budget']['currency']) {
   const value = parseMoney(raw);
   return value == null ? raw : formatMoney(value, currency);
+}
+
+function stopCaption(stop: TripStop, index: number, total: number) {
+  const day = stopDay(stop);
+  const place = `Parada ${index + 1} de ${total}`;
+  return day == null ? place : `Día ${day} · ${place}`;
 }
 
 function Thumb({ stop, index }: { stop: TripStop; index: number }) {

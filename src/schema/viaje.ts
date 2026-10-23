@@ -69,6 +69,8 @@ export type TripStop = {
   todo: string[];
   /** Estimado de esta parada. Vacío: no se enseña. */
   cost: string;
+  /** Día del viaje, "1", "2"… Vacío en viajes antiguos: cada parada con importe era un día. */
+  day: string;
   seal: StopSeal | null;
 };
 
@@ -78,6 +80,8 @@ export type TripDocument = {
   meta: Meta;
   intro: TripIntro;
   budget: TripBudget;
+  /** Si es false, quien abre el viaje no ve la pantalla de cuentas. Los datos siguen guardados. */
+  showAccounts: boolean;
   look: TripLookId;
   stops: TripStop[];
 };
@@ -92,7 +96,47 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-export function createStop(): TripStop {
+export function stopDay(stop: { day?: string }): number | null {
+  const value = Number.parseInt((stop.day ?? '').trim(), 10);
+  return Number.isFinite(value) && value > 0 && value <= 60 ? value : null;
+}
+
+export function cleanDay(value: unknown): string {
+  const text = typeof value === 'string' ? value.trim() : '';
+  const day = stopDay({ day: text });
+  return day == null ? '' : String(day);
+}
+
+/** El día siguiente al más alto ya marcado. Si nadie tiene día, sigue la cuenta de paradas. */
+export function nextStopDay(stops: TripStop[]): string {
+  const highest = stops.reduce((max, stop) => Math.max(max, stopDay(stop) ?? 0), 0);
+  const next = highest > 0 ? highest + 1 : stops.length + 1;
+  return String(Math.min(60, Math.max(1, next)));
+}
+
+/**
+ * Marca una parada como Día N.
+ * Si el viaje aún no tenía días, las demás se quedan en Día 1, Día 2… según el orden.
+ */
+export function tagStopDay(stops: TripStop[], stopId: string, day: string): TripStop[] {
+  const next = cleanDay(day);
+  if (!next) return stops;
+  const bare = stops.every((stop) => stopDay(stop) == null);
+  const base = bare ? stops.map((stop, index) => ({ ...stop, day: String(index + 1) })) : stops;
+  return base.map((stop) => (stop.id === stopId ? { ...stop, day: next } : stop));
+}
+
+/** Añade una parada. En un viaje sin días, numera las que ya había y la nueva sigue. */
+export function appendStop(stops: TripStop[], created: TripStop): TripStop[] {
+  const bare = stops.every((stop) => stopDay(stop) == null);
+  if (bare && stops.length) {
+    const stamped = stops.map((stop, index) => ({ ...stop, day: String(index + 1) }));
+    return [...stamped, { ...created, day: String(Math.min(60, stamped.length + 1)) }];
+  }
+  return [...stops, { ...created, day: cleanDay(created.day) || nextStopDay(stops) }];
+}
+
+export function createStop(day = ''): TripStop {
   return {
     id: uid('stop'),
     title: '',
@@ -107,6 +151,7 @@ export function createStop(): TripStop {
     note: '',
     todo: [],
     cost: '',
+    day: cleanDay(day),
     seal: null,
   };
 }
@@ -127,8 +172,9 @@ export function blankTrip(): TripDocument {
     },
     intro: { forName: '', fromName: '', title: '', line: '', when: '' },
     budget: blankBudget(),
+    showAccounts: true,
     look: 'lino',
-    stops: [createStop()],
+    stops: [createStop('1')],
   };
 }
 
@@ -161,6 +207,7 @@ export function sampleTrip(): TripDocument {
       extra: '60',
       note: 'El extra es el coche. Lo demás, por parada.',
     },
+    showAccounts: true,
     look: 'lino',
     stops: [
       {
@@ -177,6 +224,7 @@ export function sampleTrip(): TripDocument {
         note: '',
         todo: ['Dejar las cosas', 'Caminar hasta el puerto'],
         cost: '40',
+        day: '1',
         seal: null,
       },
       {
@@ -193,6 +241,7 @@ export function sampleTrip(): TripDocument {
         note: 'Si hace viento, la cala de al lado.',
         todo: ['Bajar a la cala', 'No reservar la tarde'],
         cost: '180',
+        day: '2',
         seal: null,
       },
       {
@@ -209,6 +258,7 @@ export function sampleTrip(): TripDocument {
         note: '',
         todo: ['Perderse por las calles'],
         cost: '35',
+        day: '2',
         seal: null,
       },
       {
@@ -225,6 +275,7 @@ export function sampleTrip(): TripDocument {
         note: 'La vuelta es al día siguiente, tarde.',
         todo: ['Subir al atardecer'],
         cost: '90',
+        day: '3',
         seal: null,
       },
     ],
@@ -263,6 +314,7 @@ function normalizeStop(value: unknown): TripStop {
     note: str(raw.note),
     todo: Array.isArray(raw.todo) ? raw.todo.map((item) => str(item)).slice(0, 12) : [],
     cost: str(raw.cost),
+    day: cleanDay(raw.day),
     seal: parseSeal(raw.seal),
   };
 }
@@ -317,6 +369,7 @@ export function parseTrip(input: unknown): TripDocument {
       when: str(intro.when),
     },
     budget: normalizeBudget(raw.budget),
+    showAccounts: (raw as { showAccounts?: unknown }).showAccounts !== false,
     look: tripLook(str((raw as { look?: unknown }).look)).id,
     stops: Array.isArray(raw.stops) && raw.stops.length ? raw.stops.map(normalizeStop) : [createStop()],
   };

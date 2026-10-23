@@ -1,4 +1,4 @@
-import type { TripCurrency, TripDocument } from '@/schema/viaje';
+import { stopDay, type TripCurrency, type TripDocument } from '@/schema/viaje';
 
 export function parseMoney(raw: string): number | null {
   let text = raw.trim().replace(/\s/g, '').replace(/[€$]/g, '');
@@ -27,15 +27,22 @@ export function formatMoney(value: number, currency: TripCurrency) {
   }).format(value);
 }
 
-export type TripDayCost = {
+export type TripCostLine = {
   id: string;
   title: string;
   amount: number;
 };
 
+export type TripDayGroup = {
+  id: string;
+  day: number | null;
+  lines: TripCostLine[];
+  amount: number;
+};
+
 export type TripMoney = {
   currency: TripCurrency;
-  days: TripDayCost[];
+  days: TripDayGroup[];
   extra: number;
   people: number;
   total: number;
@@ -44,15 +51,30 @@ export type TripMoney = {
 };
 
 export function tripMoney(doc: TripDocument): TripMoney | null {
-  const days: TripDayCost[] = [];
+  const tagged = doc.stops.some((stop) => stopDay(stop) != null);
+  const lines: Array<TripCostLine & { day: number | null }> = [];
+  let legacy = 0;
   for (const stop of doc.stops) {
     const amount = parseMoney(stop.cost);
     if (amount == null) continue;
-    days.push({
+    const day = stopDay(stop);
+    lines.push({
       id: stop.id,
       title: stop.title.trim() || 'Parada',
       amount,
+      day: day ?? (tagged ? null : ++legacy),
     });
+  }
+  const days: TripDayGroup[] = [];
+  for (const line of lines) {
+    const key = line.day == null ? `solo:${line.id}` : `dia:${line.day}`;
+    let group = line.day == null ? undefined : days.find((item) => item.id === key);
+    if (!group) {
+      group = { id: key, day: line.day, lines: [], amount: 0 };
+      days.push(group);
+    }
+    group.lines.push({ id: line.id, title: line.title, amount: line.amount });
+    group.amount += line.amount;
   }
   const extra = parseMoney(doc.budget.extra) ?? 0;
   const people = peopleOf(doc.budget.people);

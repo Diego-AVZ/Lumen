@@ -10,7 +10,7 @@ import { isViaje } from '@/schema/project';
 import { coordsLabel, parseLatLngPair } from '@/universe/coords';
 import { AttachPicker } from '@/attach/AttachPicker';
 import { fromDateTime, toDateInput, toTimeInput } from '@/schema/cita';
-import { TRIP_LOOKS, TRIP_SLIDE, createStop, parseTrip, tripTitle, type TripBudget, type TripDocument, type TripStop } from '@/schema/viaje';
+import { TRIP_LOOKS, TRIP_SLIDE, appendStop, createStop, parseTrip, stopDay, tagStopDay, tripTitle, type TripBudget, type TripDocument, type TripStop } from '@/schema/viaje';
 import { PhoneRack, PhoneStage } from '@/studio/PhoneStage';
 import { PublishDialog } from '@/studio/PublishDialog';
 import { pinOf } from '@/viaje/TripMap';
@@ -100,7 +100,7 @@ export function TripStudio({ id }: { id: string }) {
 
   const addStop = () => {
     const created = createStop();
-    edit((current) => ({ ...current, stops: [...current.stops, created] }));
+    edit((current) => ({ ...current, stops: appendStop(current.stops, created) }));
     setFocus(created.id);
   };
 
@@ -135,7 +135,7 @@ export function TripStudio({ id }: { id: string }) {
       created.lat = latText;
       created.lng = lngText;
       target = created.id;
-      return { ...current, stops: [...current.stops, created] };
+      return { ...current, stops: appendStop(current.stops, created) };
     });
     if (target) setFocus(target);
     const placed = target;
@@ -155,12 +155,12 @@ export function TripStudio({ id }: { id: string }) {
     { key: 'route', label: 'Recorrido', node: <TripPlayer doc={doc} framed preview stopId={null} onStop={() => undefined} /> },
     ...doc.stops.map((stop, index) => ({
       key: stop.id,
-      label: stop.title.trim() || `Parada ${index + 1}`,
+      label: stopChip(stop, index),
       node: <TripPlayer doc={doc} framed preview stopId={stop.id} onStop={() => undefined} />,
     })),
     {
       key: 'slide',
-      label: 'Cuentas',
+      label: doc.showAccounts ? 'Cuentas' : 'Cuentas, oculta',
       node: <TripPlayer doc={doc} framed preview stopId={TRIP_SLIDE} onStop={() => undefined} />,
     },
   ];
@@ -223,7 +223,21 @@ export function TripStudio({ id }: { id: string }) {
             </div>
           </div>
 
-          <p className="mt-5 text-[10px] uppercase tracking-[0.16em] text-brass">Presupuesto</p>
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-brass">Presupuesto</p>
+            <button
+              type="button"
+              onClick={() => edit((current) => ({ ...current, showAccounts: !current.showAccounts }))}
+              className={`rounded-full px-2.5 py-1 text-[12px] ${doc.showAccounts ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
+            >
+              {doc.showAccounts ? 'Visible en el viaje' : 'Oculta en el viaje'}
+            </button>
+          </div>
+          <p className="mt-1.5 text-[12px] leading-relaxed text-inkwell/45">
+            {doc.showAccounts
+              ? 'Quien abre el viaje ve las cuentas. Si la ocultas, el presupuesto y las notas se quedan guardados.'
+              : 'Ahora no sale en el viaje. El presupuesto y las notas siguen guardados: vuelve a mostrarla cuando actualices.'}
+          </p>
           <div className="mt-2 grid grid-cols-2 gap-2.5">
             <div>
               <p className="text-[10px] uppercase tracking-[0.14em] text-inkwell/40">Moneda</p>
@@ -280,7 +294,7 @@ export function TripStudio({ id }: { id: string }) {
                 onClick={() => setFocus(stop.id)}
                 className={`rounded-full px-2.5 py-1 text-[12px] ${focus === stop.id ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
               >
-                {index + 1}. {stop.title.trim() || 'Sin nombre'}
+                {stopChip(stop, index)}
               </button>
             ))}
             <button
@@ -288,7 +302,7 @@ export function TripStudio({ id }: { id: string }) {
               onClick={() => setFocus(TRIP_SLIDE)}
               className={`rounded-full px-2.5 py-1 text-[12px] ${focus === TRIP_SLIDE ? 'bg-inkwell text-linen' : 'bg-white ring-1 ring-black/10'}`}
             >
-              Cuentas
+              {doc.showAccounts ? 'Cuentas' : 'Cuentas, oculta'}
             </button>
           </div>
 
@@ -299,8 +313,10 @@ export function TripStudio({ id }: { id: string }) {
                 stop={stop}
                 index={index}
                 total={doc.stops.length}
+                stops={doc.stops}
                 currency={doc.budget.currency}
                 onChange={(recipe) => patchStop(stop.id, recipe)}
+                onDay={(day) => edit((current) => ({ ...current, stops: tagStopDay(current.stops, stop.id, day) }))}
                 onMove={(dir) => move(index, dir)}
                 onRemove={() => {
                   edit((current) => ({ ...current, stops: current.stops.filter((item) => item.id !== stop.id) }));
@@ -380,16 +396,20 @@ function StopEditor({
   stop,
   index,
   total,
+  stops,
   currency,
   onChange,
+  onDay,
   onMove,
   onRemove,
 }: {
   stop: TripStop;
   index: number;
   total: number;
+  stops: TripStop[];
   currency: TripDocument['budget']['currency'];
   onChange: (recipe: (stop: TripStop) => TripStop) => void;
+  onDay: (day: string) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
 }) {
@@ -414,7 +434,9 @@ function StopEditor({
   return (
     <div className="mt-4 rounded-[18px] bg-white p-3 ring-1 ring-black/5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] uppercase tracking-[0.16em] text-brass">Parada {index + 1}</p>
+        <p className="text-[10px] uppercase tracking-[0.16em] text-brass">
+          {stopDay(stop) != null ? `Día ${stopDay(stop)} · ` : ''}Parada {index + 1}
+        </p>
         <div className="flex gap-2 text-[11px] text-inkwell/45">
           <button type="button" disabled={index === 0} onClick={() => onMove(-1)} className="disabled:opacity-30">
             Subir
@@ -428,6 +450,7 @@ function StopEditor({
         </div>
       </div>
       <div className="mt-2 grid gap-2">
+        <DayPicker stop={stop} stops={stops} onPick={onDay} />
         <Field label="Título">
           <input className={input} value={stop.title} placeholder="Nerja" onChange={(event) => onChange((current) => ({ ...current, title: event.target.value }))} />
         </Field>
@@ -557,6 +580,44 @@ function StopEditor({
       </div>
     </div>
   );
+}
+
+function DayPicker({ stop, stops, onPick }: { stop: TripStop; stops: TripStop[]; onPick: (day: string) => void }) {
+  const bare = stops.every((item) => stopDay(item) == null);
+  const selected = stopDay(stop) ?? (bare ? stops.findIndex((item) => item.id === stop.id) + 1 : null);
+  const highest = stops.reduce((max, item) => Math.max(max, stopDay(item) ?? 0), 0);
+  const ceiling = Math.max(1, selected ?? 0, highest, bare ? stops.length : 0);
+  const options = Array.from({ length: Math.min(60, ceiling) }, (_, option) => option + 1);
+
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-[0.14em] text-inkwell/40">Día del viaje</p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {options.map((day) => (
+          <button
+            key={day}
+            type="button"
+            onClick={() => onPick(String(day))}
+            className={`rounded-full px-2.5 py-1 text-[12px] ${selected === day ? 'bg-inkwell text-linen' : 'bg-linen ring-1 ring-black/10'}`}
+          >
+            Día {day}
+          </button>
+        ))}
+        {ceiling < 60 && (
+          <button type="button" onClick={() => onPick(String(ceiling + 1))} className="rounded-full px-2.5 py-1 text-[12px] text-brass">
+            Otro día
+          </button>
+        )}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-inkwell/40">Varias paradas pueden llevar el mismo día. En las cuentas se juntan.</p>
+    </div>
+  );
+}
+
+function stopChip(stop: TripStop, index: number) {
+  const day = stopDay(stop);
+  const name = stop.title.trim() || 'Sin nombre';
+  return day == null ? `${index + 1}. ${name}` : `Día ${day} · ${name}`;
 }
 
 function packCoord(value: number) {
