@@ -1068,6 +1068,8 @@ button {
 .trip-map {
   isolation: isolate;
   z-index: 0;
+  height: 100%;
+  width: 100%;
 }
 
 .trip-map .leaflet-control-zoom {

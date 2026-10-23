@@ -211,7 +211,10 @@ export function Gift({ kind }: { kind: 'published' | 'draft' }) {
   }
 
   return (
-    <div className="relative h-dvh w-full overflow-hidden">
+    <div
+      className={isViaje(doc) ? 'fixed inset-x-0 top-0 h-dvh w-full overflow-hidden' : 'relative h-dvh w-full overflow-hidden'}
+      style={isViaje(doc) ? { height: '100svh' } : undefined}
+    >
       {isCita(doc) ? (
         <DateAskPlayer key={doc.meta.id} doc={doc} />
       ) : isWeb(doc) ? (

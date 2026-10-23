@@ -98,22 +98,23 @@ export function TripPlayer({
   return (
     <div
       ref={stage}
-      className="relative h-full w-full overflow-hidden overscroll-none"
+      className="relative flex h-full w-full flex-col overflow-hidden overscroll-none"
       style={{
         background: look.map,
         color: '#f6efe6',
-        ['--frame-safe-top' as string]: framed ? '36px' : nested ? '0px' : undefined,
-        ['--frame-safe-bottom' as string]: framed ? '22px' : undefined,
-        ['--safe-top' as string]: nested ? '0px' : undefined,
+        ['--safe-top' as string]: framed ? '36px' : nested ? '0px' : 'env(safe-area-inset-top, 0px)',
+        ['--safe-bottom' as string]: framed ? '22px' : 'env(safe-area-inset-bottom, 0px)',
       }}
     >
-      <div className="absolute inset-x-0 top-0 z-0 overflow-hidden" style={{ height: `calc(${(1 - lift) * 100}% + 18px)` }}>
-        <TripMap
-          points={pins}
-          activeIndex={activePin != null && activePin >= 0 ? activePin : null}
-          onPick={go}
-          onDrop={onDrop}
-        />
+      <div className="relative z-0 min-h-0 w-full" style={{ flex: `${1 - lift} 1 0%` }}>
+        <div className="absolute inset-x-0 top-0 isolate overflow-hidden" style={{ height: 'calc(100% + 18px)' }}>
+          <TripMap
+            points={pins}
+            activeIndex={activePin != null && activePin >= 0 ? activePin : null}
+            onPick={go}
+            onDrop={onDrop}
+          />
+        </div>
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-16 bg-gradient-to-b from-black/45 to-transparent" />
         <p className="pointer-events-none absolute left-4 top-[calc(var(--safe-top)+0.7rem)] z-[1] text-[11px] uppercase tracking-[0.2em] text-white/80">
           {slide ? 'Cuentas' : stop ? stopCaption(stop, index, doc.stops.length) : 'Todo el recorrido'}
@@ -126,8 +127,8 @@ export function TripPlayer({
       </div>
 
       <section
-        className="absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[26px] shadow-[0_-12px_28px_rgba(0,0,0,0.22)]"
-        style={{ height: `${lift * 100}%`, background: look.sheet, color: look.ink }}
+        className="relative z-20 flex min-h-0 w-full flex-col rounded-t-[26px] shadow-[0_-12px_28px_rgba(0,0,0,0.22)]"
+        style={{ flex: `${lift} 1 0%`, background: look.sheet, color: look.ink }}
       >
         <div className="flex shrink-0 items-center gap-1 px-2 pb-1 pt-1.5">
           <button
@@ -177,7 +178,7 @@ export function TripPlayer({
             <Overview doc={doc} onOpen={go} />
           )}
         </div>
-        <footer className="flex shrink-0 items-center gap-2 border-t border-black/10 px-4 pb-[max(env(safe-area-inset-bottom,0px),1.15rem)] pt-3">
+        <footer className="flex shrink-0 items-center gap-2 border-t border-black/10 px-4 pb-[max(var(--safe-bottom),1.15rem)] pt-3">
           {slide || stop ? (
             <button type="button" onClick={() => go(null)} className="flex-1 rounded-full px-3 py-2.5 text-[13px]" style={{ background: look.ink, color: look.sheet }}>
               Recorrido
@@ -245,9 +246,9 @@ function Overview({ doc, onOpen }: { doc: TripDocument; onOpen: (id: string) => 
       {doc.stops.length === 0 ? (
         <p className="mt-6 text-[15px] text-[#1b1612]/45">Todavía no hay paradas.</p>
       ) : (
-        <ul className="mt-4 flex gap-3 overflow-x-auto pb-2">
+        <ul className="mt-4 flex w-full min-w-0 gap-3 overflow-x-auto pb-2">
           {doc.stops.map((stop, index) => (
-            <li key={stop.id} className="w-[7.2rem] shrink-0">
+            <li key={stop.id} className="w-[7.2rem] max-w-[7.2rem] shrink-0">
               <button type="button" onClick={() => onOpen(stop.id)} className="w-full text-left">
                 <Thumb stop={stop} index={index} />
                 {stopDay(stop) != null && (
@@ -309,9 +310,9 @@ function StopView({
             haptic('light');
             onOpenPhoto(stop.photo);
           }}
-          className="mt-3 block w-full text-left"
+          className="relative mt-3 block aspect-[16/10] w-full overflow-hidden rounded-[18px] text-left"
         >
-          <img src={stop.photo} alt="" className="aspect-[16/10] w-full rounded-[18px] object-cover" />
+          <img src={stop.photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
         </button>
       ) : (
         <span className="mt-3 grid h-9 w-9 place-items-center rounded-full bg-[#e4d3b8] font-display text-[0.95rem] italic text-[#1b1612]/50">
@@ -546,9 +547,9 @@ function stopCaption(stop: TripStop, index: number, total: number) {
 
 function Thumb({ stop, index }: { stop: TripStop; index: number }) {
   return (
-    <span className="relative block aspect-[4/3] overflow-hidden rounded-[16px] bg-[#e4d3b8]">
+    <span className="relative block aspect-[4/3] w-full overflow-hidden rounded-[16px] bg-[#e4d3b8]">
       {stop.photo.trim() ? (
-        <img src={stop.photo} alt="" className="h-full w-full object-cover" />
+        <img src={stop.photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         <span className="grid h-full place-items-center font-display text-lg italic text-[#1b1612]/45">{index + 1}</span>
       )}
