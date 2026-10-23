@@ -52,7 +52,6 @@ export function TripPlayer({
     [doc.stops],
   );
   const accountsOn = doc.showAccounts !== false;
-  const bare = !framed && !nested;
   const slide = openId === TRIP_SLIDE && (accountsOn || Boolean(onStop));
   const index = slide ? -1 : doc.stops.findIndex((stop) => stop.id === openId);
   const stop = index >= 0 ? doc.stops[index] : null;
@@ -79,7 +78,7 @@ export function TripPlayer({
   const onHandleMove = (event: PointerEvent<HTMLButtonElement>) => {
     if (!drag.current || !stage.current) return;
     event.preventDefault();
-    const height = (bare ? window.visualViewport?.height : 0) || stage.current.clientHeight || 1;
+    const height = stage.current.clientHeight || 1;
     const next = drag.current.start - (event.clientY - drag.current.startY) / height;
     setLift(Math.min(0.9, Math.max(0.34, next)));
   };
@@ -108,10 +107,7 @@ export function TripPlayer({
         ['--safe-top' as string]: nested ? '0px' : undefined,
       }}
     >
-      <div
-        className="absolute inset-x-0 top-0 z-0 overflow-hidden"
-        style={{ height: bare ? `calc(${(1 - lift) * 100}dvh + 18px)` : `calc(${(1 - lift) * 100}% + 18px)` }}
-      >
+      <div className="absolute inset-x-0 top-0 z-0 overflow-hidden" style={{ height: `calc(${(1 - lift) * 100}% + 18px)` }}>
         <TripMap
           points={pins}
           activeIndex={activePin != null && activePin >= 0 ? activePin : null}
@@ -131,11 +127,7 @@ export function TripPlayer({
 
       <section
         className="absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[26px] shadow-[0_-12px_28px_rgba(0,0,0,0.22)]"
-        style={{
-          height: bare ? `calc(100lvh - ${(1 - lift) * 100}dvh)` : `${lift * 100}%`,
-          background: look.sheet,
-          color: look.ink,
-        }}
+        style={{ height: `${lift * 100}%`, background: look.sheet, color: look.ink }}
       >
         <div className="flex shrink-0 items-center gap-1 px-2 pb-1 pt-1.5">
           <button
@@ -168,10 +160,7 @@ export function TripPlayer({
             ›
           </button>
         </div>
-        <div
-          className="scroll-y min-h-0 flex-1 px-5 pt-2"
-          style={{ paddingBottom: bare ? 'calc(4.6rem + max(env(safe-area-inset-bottom, 0px), calc(100lvh - 100dvh)))' : '1rem' }}
-        >
+        <div className="scroll-y min-h-0 flex-1 px-5 pb-4 pt-2">
           {slide ? (
             <Accounts doc={doc} preview={preview} money={money} />
           ) : stop ? (
@@ -188,17 +177,7 @@ export function TripPlayer({
             <Overview doc={doc} onOpen={go} />
           )}
         </div>
-        <footer
-          className={`z-10 flex shrink-0 items-center gap-2 px-4 pt-3 ${bare ? 'absolute inset-x-0 pb-3' : 'border-t border-black/10 pb-[calc(var(--safe-bottom)+1.15rem)]'}`}
-          style={
-            bare
-              ? {
-                  bottom: 'max(env(safe-area-inset-bottom, 0px), calc(100lvh - 100dvh))',
-                  background: `linear-gradient(to top, ${look.sheet} 68%, transparent)`,
-                }
-              : undefined
-          }
-        >
+        <footer className="flex shrink-0 items-center gap-2 border-t border-black/10 px-4 pb-[max(env(safe-area-inset-bottom,0px),1.15rem)] pt-3">
           {slide || stop ? (
             <button type="button" onClick={() => go(null)} className="flex-1 rounded-full px-3 py-2.5 text-[13px]" style={{ background: look.ink, color: look.sheet }}>
               Recorrido
